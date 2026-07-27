@@ -1,4 +1,4 @@
-import { ArrowRight, Copy, LockKeyhole, MessageCircle, MoonStar, ShieldCheck, Swords, UsersRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, MessageCircle, MoonStar, ShieldCheck, Swords, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageShell } from "../components/PageShell";
 
@@ -50,13 +50,6 @@ export function HomePage() {
                     <h2 className="mt-2 text-xl font-semibold">Kuzgunların Gecesi</h2>
                   </div>
                   <span className="status-dot status-online">Bekleniyor</span>
-                </div>
-                <div className="mt-5 flex items-center gap-2 rounded-2xl border border-dashed border-white/[.12] bg-black/20 p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-mist">ODA KODU</p>
-                    <p className="font-display text-2xl tracking-[.18em] text-white">GE7NCE</p>
-                  </div>
-                  <button className="btn-icon" aria-label="Örnek oda kodunu kopyala"><Copy size={16} /></button>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 p-5">
