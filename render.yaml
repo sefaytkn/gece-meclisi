@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: gece-meclisi-api
+    runtime: node
+    rootDir: .
+    buildCommand: npm ci && npm run prisma:generate -w server && npm run prisma:migrate:deploy -w server && npm run build -w server
+    startCommand: npm run start -w server
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: COOKIE_SECURE
+        sync: false
+      - key: COOKIE_SAME_SITE
+        sync: false
