@@ -242,6 +242,7 @@ export function GamePage() {
                         ? `${room.settings.voteVisibility === "PUBLIC" ? "Açık" : "Gizli"} oylama · ${game.votesCast} kişi oy kullandı`
                         : "Bir oyuncu seç ve süre dolmadan kararını onayla."}
                     </p>
+                    {canVote && <p className="mt-2 text-xs text-amber-100/60">Hayatta olan herkes oy verdiğinde oylama otomatik tamamlanır.</p>}
                   </div>
                 </div>
               </div>
