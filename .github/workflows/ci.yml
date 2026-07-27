@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 15
     env:
       NODE_ENV: test
+      PORT: "4000"
       DATABASE_URL: postgresql://user:password@localhost:5432/game_platform?schema=public
       DIRECT_URL: postgresql://user:password@localhost:5432/game_platform?schema=public
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
