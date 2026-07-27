@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock3, Crown, HeartPulse, LoaderCircle, Moon, Shield, Skull, Sparkles, Sun, Vote } from "lucide-react";
+import { ArrowLeft, Check, CircleX, Clock3, Crown, HeartPulse, LoaderCircle, Moon, Shield, Skull, Sparkles, Sun, Target, Vote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
@@ -38,7 +38,7 @@ export function GamePage() {
   const [selected, setSelected] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionPending, setActionPending] = useState(false);
-  const seconds = useCountdown(game?.phaseEndsAt);
+  const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
     ? "DEAD"
@@ -216,39 +216,56 @@ export function GamePage() {
 
         <div className="space-y-5">
           {showActionPanel ? (
-            <section className="panel p-5 sm:p-6">
-              <p className="eyebrow">{canVote ? "OYUNU KULLAN" : privateState.role === "DOCTOR" ? "KORUYACAĞIN KİŞİ" : "GECE HEDEFİN"}</p>
-              <h2 className="mt-2 text-xl font-semibold">{canVote ? "Kasaba kimi gönderecek?" : privateState.role === "DOCTOR" ? "Bu gece kimi hayatta tutacaksın?" : "Gölgeler kimi bulacak?"}</h2>
-              <p className="mt-1 text-sm text-mist">
-                {canVote
-                  ? `${room.settings.voteVisibility === "PUBLIC" ? "Açık" : "Gizli"} oylama · ${game.votesCast} oy kullanıldı`
-                  : "Kararını süre dolmadan gönder."}
-              </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                {targets.map((player) => (
-                  <button
-                    key={player.id}
-                    disabled={actionLocked}
-                    onClick={() => setSelected(player.id)}
-                    className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${selected === player.id ? "border-rose-400/35 bg-rose-500/[.08]" : "border-white/[.06] bg-white/[.025] hover:border-white/[.12]"}`}
-                  >
-                    <span className="avatar h-9 w-9 shrink-0 text-[10px] font-bold">{player.nickname.slice(0, 2).toUpperCase()}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{player.nickname}</span>
-                      {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
-                        <span className="mt-0.5 block truncate text-[10px] text-mist">{votersByTarget.get(player.id)!.join(", ")} oy verdi</span>
-                      )}
-                    </span>
-                    {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
-                      <span className="rounded-full bg-white/[.06] px-2 py-1 text-[10px] font-bold">{votersByTarget.get(player.id)!.length}</span>
-                    )}
-                    {selected === player.id && <Check size={16} className="text-rose-300" />}
-                  </button>
-                ))}
+            <section className="panel overflow-hidden">
+              <div className={`border-b p-5 sm:p-6 ${canVote ? "border-amber-300/10 bg-amber-300/[.035]" : privateState.role === "DOCTOR" ? "border-emerald-300/10 bg-emerald-300/[.035]" : "border-rose-300/10 bg-rose-300/[.035]"}`}>
+                <div className="flex items-start gap-4">
+                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${canVote ? "bg-amber-300/10 text-amber-200" : privateState.role === "DOCTOR" ? "bg-emerald-300/10 text-emerald-200" : "bg-rose-300/10 text-rose-200"}`}>
+                    {canVote ? <Vote size={20} /> : privateState.role === "DOCTOR" ? <Shield size={20} /> : <Target size={20} />}
+                  </span>
+                  <div>
+                    <p className="eyebrow">{canVote ? "KASABA OYLAMASI" : privateState.role === "DOCTOR" ? "GECE KORUMASI" : "VAMPİR SALDIRISI"}</p>
+                    <h2 className="mt-2 text-xl font-semibold">{canVote ? "Kasaba kimi eleyecek?" : privateState.role === "DOCTOR" ? "Bu gece kimi koruyacaksın?" : "Bu gece kimi öldüreceksin?"}</h2>
+                    <p className="mt-1 text-sm text-mist">
+                      {canVote
+                        ? `${room.settings.voteVisibility === "PUBLIC" ? "Açık" : "Gizli"} oylama · ${game.votesCast} kişi oy kullandı`
+                        : "Bir oyuncu seç ve süre dolmadan kararını onayla."}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
-                {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
-              </button>
+              <div className="p-5 sm:p-6">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {targets.map((player) => (
+                    <button
+                      key={player.id}
+                      disabled={actionLocked}
+                      onClick={() => setSelected(player.id)}
+                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${selected === player.id ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]" : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"}`}
+                    >
+                      <span className="avatar h-9 w-9 shrink-0 text-[10px] font-bold">{player.nickname.slice(0, 2).toUpperCase()}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{player.nickname}</span>
+                        {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
+                          <span className="mt-0.5 block truncate text-[10px] text-mist">{votersByTarget.get(player.id)!.join(", ")} oy verdi</span>
+                        )}
+                      </span>
+                      {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
+                        <span className="rounded-full bg-white/[.06] px-2 py-1 text-[10px] font-bold">{votersByTarget.get(player.id)!.length}</span>
+                      )}
+                      {selected === player.id && <Check size={16} className="text-rose-300" />}
+                    </button>
+                  ))}
+                </div>
+                {selected && (
+                  <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-500/[.05] px-3 py-2 text-xs text-rose-100">
+                    <Check size={14} className="shrink-0 text-rose-300" />
+                    <span><strong>{playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
+                  </div>
+                )}
+                <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
+                  {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
+                </button>
+              </div>
             </section>
           ) : (
             <section className="panel grid min-h-64 place-items-center p-8 text-center">
@@ -308,22 +325,24 @@ export function GamePage() {
 
 function GamePlayerRow({ player, isMe, owner, revealedRole }: { player: GamePlayer; isMe: boolean; owner: boolean; revealedRole?: Role }) {
   return (
-    <div className={`flex items-center gap-3 px-5 py-3.5 ${!player.isAlive ? "opacity-45" : ""}`}>
-      <div className={`avatar ${!player.isAlive ? "avatar-dead" : ""}`}>{player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={16} />}</div>
+    <div className={`flex items-center gap-3 px-5 py-3.5 ${!player.isAlive ? "bg-rose-950/20 text-mist" : ""}`}>
+      <div className={`avatar ${!player.isAlive ? "avatar-dead border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>{player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}</div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold">{player.nickname}</span>
+          <span className={`truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400/70 decoration-2" : ""}`}>{player.nickname}</span>
           {owner && <Crown size={13} className="text-amber-300" />}
           {isMe && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
         </div>
-        <p className="mt-0.5 text-[10px] text-mist">{player.isAlive ? (player.connected === false ? "Bağlantısı koptu" : "Hayatta") : "Elendi"}</p>
+        <p className={`mt-0.5 text-[10px] ${player.isAlive ? "text-mist" : "font-bold uppercase tracking-wider text-rose-300"}`}>{player.isAlive ? (player.connected === false ? "Bağlantısı koptu" : "Hayatta") : "Öldü · oy kullanamaz"}</p>
       </div>
       {revealedRole && (
         <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${revealedRole === "VAMPIRE" ? "bg-rose-500/10 text-rose-300" : revealedRole === "DOCTOR" ? "bg-emerald-500/10 text-emerald-300" : "bg-sky-500/10 text-sky-300"}`}>
           {roleNames[revealedRole]}
         </span>
       )}
-      <span className={`h-2 w-2 rounded-full ${player.isAlive ? "bg-emerald-400" : "bg-rose-400/40"}`} />
+      {player.isAlive
+        ? <span className="h-2 w-2 rounded-full bg-emerald-400" />
+        : <span className="rounded-full border border-rose-400/20 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300">Ölü</span>}
     </div>
   );
 }

@@ -73,6 +73,7 @@ export interface GameState {
   players: GamePlayer[];
   lastResult: string | null;
   phaseEndsAt: number | null;
+  serverNow?: number;
   votesCast: number;
   publicVotes: { voterId: string; targetId: string }[];
 }

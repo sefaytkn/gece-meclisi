@@ -47,6 +47,8 @@ export function LobbyPage() {
 
   const updateSettings = (settings: RoomSettings) =>
     run(() => emitAck<{ room: Room }>("room:update-settings", { settings }));
+  const updateMaxPlayers = (maxPlayers: number) =>
+    run(() => emitAck<{ room: Room }>("room:update-settings", { maxPlayers }));
 
   const copyCode = async () => {
     await navigator.clipboard.writeText(room?.code ?? code);
@@ -177,6 +179,29 @@ export function LobbyPage() {
             </button>
             {advanced && (
               <div className="grid gap-4 border-t border-white/[.06] p-5 sm:grid-cols-2">
+                <label className="rounded-2xl border border-white/[.06] bg-white/[.02] p-4 text-xs text-mist sm:col-span-2">
+                  <span className="mb-3 flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block font-semibold text-white">Oda kapasitesi</span>
+                      <span className="mt-1 block text-[10px] leading-4">Odaya katılabilecek en fazla oyuncu sayısı.</span>
+                    </span>
+                    <span className="font-display text-2xl text-white">{room.maxPlayers}</span>
+                  </span>
+                  <input
+                    className="w-full accent-rose-500"
+                    type="range"
+                    min={Math.max(4, room.players.length)}
+                    max={16}
+                    step={1}
+                    disabled={!isOwner || busy || connectionState !== "connected"}
+                    value={room.maxPlayers}
+                    onChange={(event) => void updateMaxPlayers(Number(event.target.value))}
+                  />
+                  <span className="mt-2 flex justify-between text-[10px]">
+                    <span>En az {Math.max(4, room.players.length)}</span>
+                    <span>En fazla 16</span>
+                  </span>
+                </label>
                 {[
                   { key: "nightSeconds", label: "Gece süresi", min: 15, max: 180 },
                   { key: "discussionSeconds", label: "Tartışma süresi", min: 15, max: 300 },

@@ -82,7 +82,8 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
     if (!room.engine) return;
     io.to(code).emit("game:state", {
       ...room.engine.getPublicState(),
-      phaseEndsAt: room.phaseEndsAt
+      phaseEndsAt: room.phaseEndsAt,
+      serverNow: Date.now()
     });
     emitPrivateState(code);
   };
@@ -200,7 +201,13 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
         if (result.privateState) {
           socket.emit("game:private-role", result.privateState);
           const room = roomService.getInternalRoom(result.room.code);
-          if (room.engine) socket.emit("game:state", { ...room.engine.getPublicState(), phaseEndsAt: room.phaseEndsAt });
+          if (room.engine) {
+            socket.emit("game:state", {
+              ...room.engine.getPublicState(),
+              phaseEndsAt: room.phaseEndsAt,
+              serverNow: Date.now()
+            });
+          }
         }
         io.to(result.room.code).emit("chat:system-message", systemMessage(`${socket.data.identity.nickname} odaya katıldı.`));
         const { replacedSocketId: _replacedSocketId, ...publicResult } = result;
@@ -275,7 +282,11 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
       void handle(ack, () => {
         const { roomCode, playerId } = requireMembership(socket);
         const result = roomService.startGame(roomCode, playerId);
-        io.to(roomCode).emit("game:started", result.engine.getPublicState());
+        io.to(roomCode).emit("game:started", {
+          ...result.engine.getPublicState(),
+          phaseEndsAt: result.room.phaseEndsAt,
+          serverNow: Date.now()
+        });
         emitPrivateState(roomCode);
         broadcastRoom(roomCode);
         schedulePhase(roomCode);
@@ -301,7 +312,11 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
         assertPhaseOpen(room);
         const boundAction = bindGameAction(playerId, "NIGHT_ACTION", input);
         room.engine.handleAction(boundAction.actorPlayerId, boundAction.action);
-        socket.emit("game:state", { ...room.engine.getPublicState(), phaseEndsAt: room.phaseEndsAt });
+        socket.emit("game:state", {
+          ...room.engine.getPublicState(),
+          phaseEndsAt: room.phaseEndsAt,
+          serverNow: Date.now()
+        });
         socket.emit("game:private-role", room.engine.getPrivateState(playerId));
         return { accepted: true };
       })();
