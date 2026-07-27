@@ -5,7 +5,7 @@ services:
     region: frankfurt
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm run prisma:generate -w server && npm run prisma:migrate:deploy -w server && npm run build -w server
+    buildCommand: npm ci --include=dev && npm run prisma:generate -w server && npm run prisma:migrate:deploy -w server && npm run build -w server
     startCommand: npm run start -w server
     healthCheckPath: /health
     autoDeployTrigger: checksPass
