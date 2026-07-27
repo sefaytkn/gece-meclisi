@@ -88,6 +88,39 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
     emitPrivateState(code);
   };
 
+  const completePhase = (code: string) => {
+    const activeTimer = timers.get(code);
+    if (activeTimer) clearTimeout(activeTimer);
+    timers.delete(code);
+    if (resolvingPhases.has(code)) return;
+    resolvingPhases.add(code);
+    try {
+      const activeRoom = roomService.getInternalRoom(code);
+      const previousAlive = new Set(
+        activeRoom.engine?.getPublicState().players.filter((player) => player.isAlive).map((player) => player.id) ?? []
+      );
+      const nextPhase = activeRoom.engine?.advancePhase();
+      activeRoom.phaseEndsAt = null;
+      const currentState = activeRoom.engine?.getPublicState();
+      const eliminated = currentState?.players.find((player) => previousAlive.has(player.id) && !player.isAlive);
+      if (eliminated) io.to(code).emit("game:player-eliminated", eliminated);
+      if (nextPhase === "FINISHED") {
+        activeRoom.status = "FINISHED";
+        io.to(code).emit("game:ended", currentState);
+        broadcastRoom(code);
+        broadcastGame(code);
+        return;
+      }
+      if (nextPhase === "ROUND_RESULT") io.to(code).emit("game:round-result", currentState);
+      schedulePhase(code);
+    } catch (error) {
+      logger.error("Game phase completion failed", { code, error });
+      timers.delete(code);
+    } finally {
+      resolvingPhases.delete(code);
+    }
+  };
+
   const schedulePhase = (code: string) => {
     const room = roomService.getInternalRoom(code);
     if (!room.engine || room.engine.getPhase() === "FINISHED") return;
@@ -108,36 +141,7 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
     if (existing) clearTimeout(existing);
     timers.set(
       code,
-      setTimeout(() => {
-        timers.delete(code);
-        if (resolvingPhases.has(code)) return;
-        resolvingPhases.add(code);
-        try {
-          const activeRoom = roomService.getInternalRoom(code);
-          const previousAlive = new Set(
-            activeRoom.engine?.getPublicState().players.filter((player) => player.isAlive).map((player) => player.id) ?? []
-          );
-          const nextPhase = activeRoom.engine?.advancePhase();
-          activeRoom.phaseEndsAt = null;
-          const currentState = activeRoom.engine?.getPublicState();
-          const eliminated = currentState?.players.find((player) => previousAlive.has(player.id) && !player.isAlive);
-          if (eliminated) io.to(code).emit("game:player-eliminated", eliminated);
-          if (nextPhase === "FINISHED") {
-            activeRoom.status = "FINISHED";
-            io.to(code).emit("game:ended", currentState);
-            broadcastRoom(code);
-            broadcastGame(code);
-            return;
-          }
-          if (nextPhase === "ROUND_RESULT") io.to(code).emit("game:round-result", currentState);
-          schedulePhase(code);
-        } catch (error) {
-          logger.error("Game phase timer failed", { code, error });
-          timers.delete(code);
-        } finally {
-          resolvingPhases.delete(code);
-        }
-      }, seconds * 1000)
+      setTimeout(() => completePhase(code), seconds * 1000)
     );
   };
 
@@ -338,7 +342,8 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
             ? { voterId: playerId, targetId: boundAction.action.targetId, votesCast: publicState.votesCast }
             : { votesCast: publicState.votesCast }
         );
-        broadcastGame(roomCode);
+        if (haveAllAlivePlayersVoted(publicState)) completePhase(roomCode);
+        else broadcastGame(roomCode);
         return { accepted: true };
       })();
     });
@@ -450,6 +455,11 @@ export function assertPhaseOpen(room: Pick<RoomState, "phaseEndsAt">, now = Date
   if (room.phaseEndsAt === null || now >= room.phaseEndsAt) {
     throw new AppError("PHASE_EXPIRED", "Bu aşamanın süresi doldu.");
   }
+}
+
+export function haveAllAlivePlayersVoted(state: { votesCast: number; players: { isAlive: boolean }[] }) {
+  const aliveCount = state.players.filter((player) => player.isAlive).length;
+  return aliveCount > 0 && state.votesCast >= aliveCount;
 }
 
 function enforceChatRate(socketId: string, windows: Map<string, number[]>) {

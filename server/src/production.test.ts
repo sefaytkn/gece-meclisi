@@ -4,7 +4,7 @@ import { createApp } from "./app.js";
 import { parseServerEnv } from "./config/env.js";
 import { getSessionCookieOptions } from "./config/cookie.js";
 import { redactSensitive } from "./utils/logger.js";
-import { assertPhaseOpen, enforceSlidingWindow, parseChatInput, sanitizeChatMessage } from "./socket/setupSocket.js";
+import { assertPhaseOpen, enforceSlidingWindow, haveAllAlivePlayersVoted, parseChatInput, sanitizeChatMessage } from "./socket/setupSocket.js";
 import { createSocketRequestValidator } from "./config/cors.js";
 import { fail } from "./utils/ack.js";
 
@@ -179,6 +179,17 @@ describe("authoritative game deadline", () => {
   it("rejects actions at or after the server deadline", () => {
     expect(() => assertPhaseOpen({ phaseEndsAt: 999 }, 1_000)).toThrow();
     expect(() => assertPhaseOpen({ phaseEndsAt: 1_001 }, 1_000)).not.toThrow();
+  });
+
+  it("ends voting as soon as every living player has voted", () => {
+    expect(haveAllAlivePlayersVoted({
+      votesCast: 2,
+      players: [{ isAlive: true }, { isAlive: true }, { isAlive: false }]
+    })).toBe(true);
+    expect(haveAllAlivePlayersVoted({
+      votesCast: 1,
+      players: [{ isAlive: true }, { isAlive: true }, { isAlive: false }]
+    })).toBe(false);
   });
 });
 

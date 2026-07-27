@@ -76,6 +76,7 @@ export interface GameState {
   serverNow?: number;
   votesCast: number;
   publicVotes: { voterId: string; targetId: string }[];
+  lastVoteTally: { targetId: string; count: number; voterIds: string[] }[];
 }
 
 export interface PrivateState {

@@ -6,7 +6,7 @@ import { assignRoles } from "./roleAssignment.js";
 import { validateRoleDistribution } from "./validation.js";
 import { checkWinner as calculateWinner } from "./winnerCheck.js";
 import { resolveNight } from "./nightResolver.js";
-import { resolveVotes } from "./voteResolver.js";
+import { resolveVotes, SKIP_VOTE_ID } from "./voteResolver.js";
 import type {
   InternalPlayer,
   NightAction,
@@ -51,6 +51,7 @@ export class VampireVillageEngine implements GameEngine {
   private readonly players = new Map<string, InternalPlayer>();
   private readonly nightActions = new Map<string, string>();
   private readonly votes = new Map<string, string>();
+  private lastVoteTally: { targetId: string; count: number; voterIds: string[] }[] = [];
 
   constructor(
     private readonly initialPlayers: EnginePlayer[],
@@ -82,11 +83,12 @@ export class VampireVillageEngine implements GameEngine {
   handleAction(playerId: string, rawAction: unknown) {
     const action = actionSchema.parse(rawAction) as NightAction | VoteAction;
     const player = this.requireAlivePlayer(playerId);
-    const target = this.requireAlivePlayer(action.targetId);
     if (action.type === "NIGHT_ACTION") {
+      const target = this.requireAlivePlayer(action.targetId);
       this.handleNightAction(player, target);
     } else {
-      this.handleVote(player, target);
+      if (action.targetId !== SKIP_VOTE_ID) this.requireAlivePlayer(action.targetId);
+      this.handleVote(player, action.targetId);
     }
   }
 
@@ -108,15 +110,15 @@ export class VampireVillageEngine implements GameEngine {
     this.nightActions.set(player.id, target.id);
   }
 
-  private handleVote(player: InternalPlayer, target: InternalPlayer) {
+  private handleVote(player: InternalPlayer, targetId: string) {
     if (this.phase !== "DAY_VOTING") throw new AppError("INVALID_PHASE", "Oy yalnızca gündüz oylamasında kullanılabilir.");
-    if (!this.settings.canSelfVote && player.id === target.id) {
+    if (!this.settings.canSelfVote && player.id === targetId) {
       throw new AppError("SELF_VOTE_DISABLED", "Bu odada kendinize oy veremezsiniz.");
     }
     if (this.votes.has(player.id) && !this.settings.canChangeVote) {
       throw new AppError("VOTE_ALREADY_CAST", "Bu tur oyunuzu zaten kullandınız.");
     }
-    this.votes.set(player.id, target.id);
+    this.votes.set(player.id, targetId);
   }
 
   advancePhase(): VampirePhase {
@@ -130,14 +132,27 @@ export class VampireVillageEngine implements GameEngine {
     } else if (this.phase === "DAY_DISCUSSION") {
       this.phase = "DAY_VOTING";
       this.votes.clear();
+      this.lastVoteTally = [];
       this.lastResult = "Kasaba kararını vermek için oylamaya geçti.";
     } else if (this.phase === "DAY_VOTING") {
       const resolution = resolveVotes(this.votes, this.settings.votingTieRule);
       if (resolution.requiresRevote) {
         this.votes.clear();
+        this.lastVoteTally = [];
         this.lastResult = "Oylar eşit çıktı. Oylama tekrarlanıyor.";
         return this.phase;
       }
+      const tally = new Map<string, string[]>();
+      this.votes.forEach((targetId, voterId) => {
+        const voters = tally.get(targetId) ?? [];
+        voters.push(voterId);
+        tally.set(targetId, voters);
+      });
+      this.lastVoteTally = [...tally].map(([targetId, voterIds]) => ({
+        targetId,
+        count: voterIds.length,
+        voterIds: this.settings.voteVisibility === "PUBLIC" ? voterIds : []
+      }));
       if (resolution.eliminatedId) {
         const eliminated = this.players.get(resolution.eliminatedId)!;
         eliminated.isAlive = false;
@@ -242,7 +257,8 @@ export class VampireVillageEngine implements GameEngine {
       publicVotes:
         this.settings.voteVisibility === "PUBLIC"
           ? [...this.votes].map(([voterId, targetId]) => ({ voterId, targetId }))
-          : []
+          : [],
+      lastVoteTally: this.lastVoteTally
     };
   }
 

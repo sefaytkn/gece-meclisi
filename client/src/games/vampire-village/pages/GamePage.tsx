@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CircleX, Clock3, Crown, HeartPulse, LoaderCircle, Moon, Shield, Skull, Sparkles, Sun, Target, Vote } from "lucide-react";
+import { ArrowLeft, Check, CircleX, Clock3, Crown, HeartPulse, LoaderCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Target, Vote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
@@ -30,6 +30,8 @@ const roleNames: Record<Role, string> = {
   VILLAGER: "Köylü",
   DOCTOR: "Doktor"
 };
+
+const SKIP_VOTE_ID = "__SKIP__";
 
 export function GamePage() {
   const { code = "" } = useParams();
@@ -115,14 +117,17 @@ export function GamePage() {
     !(canVote && !room.settings.canSelfVote && player.id === session?.playerId) &&
     !(canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId)
   );
+  const actionCandidates = canVote ? game.players : targets;
   const revealedRoleByPlayer = new Map(privateState.revealedRoles.map((item) => [item.playerId, item.role]));
   const playerNameById = new Map(game.players.map((player) => [player.id, player.nickname]));
   const votersByTarget = new Map<string, string[]>();
   game.publicVotes.forEach(({ voterId, targetId }) => {
     const voters = votersByTarget.get(targetId) ?? [];
-    voters.push(playerNameById.get(voterId) ?? "Oyuncu");
+    voters.push(voterId);
     votersByTarget.set(targetId, voters);
   });
+  const lastVoteTally = game.lastVoteTally ?? [];
+  const showVoteResult = (game.phase === "ROUND_RESULT" || game.phase === "FINISHED") && lastVoteTally.length > 0;
 
   return (
     <PageShell>
@@ -215,7 +220,14 @@ export function GamePage() {
         </div>
 
         <div className="space-y-5">
-          {showActionPanel ? (
+          {showVoteResult ? (
+            <VoteResultPanel
+              players={game.players}
+              tally={lastVoteTally}
+              playerNameById={playerNameById}
+              voteVisibility={room.settings.voteVisibility}
+            />
+          ) : showActionPanel ? (
             <section className="panel overflow-hidden">
               <div className={`border-b p-5 sm:p-6 ${canVote ? "border-amber-300/10 bg-amber-300/[.035]" : privateState.role === "DOCTOR" ? "border-emerald-300/10 bg-emerald-300/[.035]" : "border-rose-300/10 bg-rose-300/[.035]"}`}>
                 <div className="flex items-start gap-4">
@@ -235,31 +247,67 @@ export function GamePage() {
               </div>
               <div className="p-5 sm:p-6">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {targets.map((player) => (
+                  {actionCandidates.map((player) => {
+                    const unavailable =
+                      !player.isAlive ||
+                      (canVote && !room.settings.canSelfVote && player.id === session?.playerId);
+                    const voterIds = votersByTarget.get(player.id) ?? [];
+                    return (
                     <button
                       key={player.id}
-                      disabled={actionLocked}
+                      disabled={actionLocked || unavailable}
                       onClick={() => setSelected(player.id)}
-                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${selected === player.id ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]" : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"}`}
+                      className={`relative flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                        !player.isAlive
+                          ? "border-rose-400/10 bg-rose-950/20 opacity-55"
+                          : selected === player.id
+                            ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]"
+                            : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"
+                      }`}
                     >
-                      <span className="avatar h-9 w-9 shrink-0 text-[10px] font-bold">{player.nickname.slice(0, 2).toUpperCase()}</span>
+                      <span className={`avatar h-9 w-9 shrink-0 text-[10px] font-bold ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
+                        {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}
+                      </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">{player.nickname}</span>
-                        {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
-                          <span className="mt-0.5 block truncate text-[10px] text-mist">{votersByTarget.get(player.id)!.join(", ")} oy verdi</span>
+                        <span className={`block truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                        {!player.isAlive && <span className="mt-0.5 block text-[9px] font-black uppercase tracking-wider text-rose-300">Öldü</span>}
+                        {canVote && room.settings.voteVisibility === "PUBLIC" && voterIds.length > 0 && (
+                          <span className="mt-2 flex flex-wrap gap-1">
+                            {voterIds.map((voterId) => (
+                              <span key={voterId} title={`${playerNameById.get(voterId) ?? "Oyuncu"} oy verdi`} className="grid h-5 w-5 place-items-center rounded-full border border-amber-300/20 bg-amber-300/10 text-[8px] font-black text-amber-200">
+                                {(playerNameById.get(voterId) ?? "?").slice(0, 1).toUpperCase()}
+                              </span>
+                            ))}
+                          </span>
                         )}
                       </span>
-                      {canVote && room.settings.voteVisibility === "PUBLIC" && Boolean(votersByTarget.get(player.id)?.length) && (
-                        <span className="rounded-full bg-white/[.06] px-2 py-1 text-[10px] font-bold">{votersByTarget.get(player.id)!.length}</span>
+                      {canVote && room.settings.voteVisibility === "PUBLIC" && voterIds.length > 0 && (
+                        <span className="rounded-full bg-white/[.06] px-2 py-1 text-[10px] font-bold">{voterIds.length}</span>
                       )}
                       {selected === player.id && <Check size={16} className="text-rose-300" />}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
+                {canVote && (
+                  <button
+                    type="button"
+                    disabled={actionLocked}
+                    onClick={() => setSelected(SKIP_VOTE_ID)}
+                    className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${
+                      selected === SKIP_VOTE_ID
+                        ? "border-amber-300/35 bg-amber-300/10 text-amber-100"
+                        : "border-white/[.08] bg-white/[.025] text-mist hover:border-white/[.16] hover:text-white"
+                    }`}
+                  >
+                    <SkipForward size={15} /> Oylamayı geç
+                    {selected === SKIP_VOTE_ID && <Check size={14} className="ml-1" />}
+                  </button>
+                )}
                 {selected && (
                   <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-500/[.05] px-3 py-2 text-xs text-rose-100">
                     <Check size={14} className="shrink-0 text-rose-300" />
-                    <span><strong>{playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
+                    <span><strong>{selected === SKIP_VOTE_ID ? "Kimseye oy verme" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
                   </div>
                 )}
                 <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
@@ -301,6 +349,18 @@ export function GamePage() {
             <p className="eyebrow mt-5">OYUN SONA ERDİ</p>
             <h2 className="mt-3 font-display text-4xl font-semibold">{game.winner === "VILLAGE" ? "Kasaba kazandı" : "Vampirler kazandı"}</h2>
             <p className="mt-3 text-sm text-mist">{game.round} tur sonunda oyun tamamlandı.</p>
+            {lastVoteTally.length > 0 && (
+              <div className="mt-6 rounded-2xl border border-amber-300/10 bg-amber-300/[.035] p-4 text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-200">SON OYLAMA</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {lastVoteTally.map((item) => (
+                    <span key={item.targetId} className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5 text-xs">
+                      {item.targetId === SKIP_VOTE_ID ? "Geç" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-7 grid gap-2 sm:grid-cols-2">
               {game.players.map((player) => (
                 <div key={player.id} className="flex items-center justify-between rounded-xl border border-white/[.06] bg-white/[.025] p-3 text-left">
@@ -320,6 +380,85 @@ export function GamePage() {
         </div>
       )}
     </PageShell>
+  );
+}
+
+function VoteResultPanel({
+  players,
+  tally,
+  playerNameById,
+  voteVisibility
+}: {
+  players: GamePlayer[];
+  tally: { targetId: string; count: number; voterIds: string[] }[];
+  playerNameById: Map<string, string>;
+  voteVisibility: "SECRET" | "PUBLIC";
+}) {
+  const tallyByTarget = new Map(tally.map((item) => [item.targetId, item]));
+  const skipTally = tallyByTarget.get(SKIP_VOTE_ID);
+
+  return (
+    <section className="panel overflow-hidden">
+      <div className="border-b border-amber-300/10 bg-amber-300/[.035] p-5 sm:p-6">
+        <p className="eyebrow">OYLAMA SONUCU</p>
+        <h2 className="mt-2 text-xl font-semibold">Kasabanın oyları</h2>
+        <p className="mt-1 text-sm text-mist">Her oyuncunun aldığı toplam oy aşağıda gösteriliyor.</p>
+      </div>
+      <div className="grid gap-2 p-5 sm:grid-cols-2 sm:p-6">
+        {players.map((player) => {
+          const result = tallyByTarget.get(player.id);
+          const voterIds = result?.voterIds ?? [];
+          const count = result?.count ?? 0;
+          return (
+            <div key={player.id} className={`rounded-2xl border p-3 ${player.isAlive ? "border-white/[.07] bg-white/[.025]" : "border-rose-400/15 bg-rose-950/20"}`}>
+              <div className="flex items-center gap-3">
+                <span className={`avatar h-9 w-9 shrink-0 text-[10px] font-bold ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
+                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                  <span className="mt-0.5 block text-[10px] text-mist">{count} oy</span>
+                </span>
+                <span className="font-display text-xl text-amber-200">{count}</span>
+              </div>
+              {count > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1 border-t border-white/[.05] pt-3">
+                  {Array.from({ length: count }, (_, index) => {
+                    const voterId = voterIds[index];
+                    const voterName = voterId ? playerNameById.get(voterId) : undefined;
+                    return (
+                      <span
+                        key={`${player.id}-${index}`}
+                        title={voteVisibility === "PUBLIC" && voterName ? `${voterName} oy verdi` : "Gizli oy"}
+                        className="grid h-6 w-6 place-items-center rounded-full border border-amber-300/20 bg-amber-300/10 text-[8px] font-black text-amber-200"
+                      >
+                        {voteVisibility === "PUBLIC" && voterName ? voterName.slice(0, 1).toUpperCase() : <Vote size={11} />}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div className="rounded-2xl border border-white/[.08] bg-white/[.025] p-3 sm:col-span-2">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.05] text-mist"><SkipForward size={17} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Oylamayı geçenler</span>
+              <span className="mt-0.5 block text-[10px] text-mist">{skipTally?.count ?? 0} oy</span>
+            </span>
+            <div className="flex flex-wrap justify-end gap-1">
+              {Array.from({ length: skipTally?.count ?? 0 }, (_, index) => (
+                <span key={`skip-${index}`} className="grid h-6 w-6 place-items-center rounded-full border border-white/[.1] bg-white/[.05] text-mist">
+                  <Vote size={11} />
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

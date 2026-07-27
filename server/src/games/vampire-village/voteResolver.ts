@@ -1,5 +1,7 @@
 import { randomInt } from "node:crypto";
 
+export const SKIP_VOTE_ID = "__SKIP__";
+
 export interface VoteResolution {
   eliminatedId: string | null;
   tiedIds: string[];
@@ -15,6 +17,9 @@ export function resolveVotes(
   votes.forEach((target) => totals.set(target, (totals.get(target) ?? 0) + 1));
   const maximum = Math.max(...totals.values());
   const tiedIds = [...totals.entries()].filter(([, count]) => count === maximum).map(([id]) => id);
+  if (tiedIds.includes(SKIP_VOTE_ID)) {
+    return { eliminatedId: null, tiedIds, requiresRevote: false };
+  }
   if (tiedIds.length === 1) return { eliminatedId: tiedIds[0]!, tiedIds: [], requiresRevote: false };
   if (tieRule === "RANDOM") {
     return { eliminatedId: tiedIds[randomInt(0, tiedIds.length)]!, tiedIds, requiresRevote: false };

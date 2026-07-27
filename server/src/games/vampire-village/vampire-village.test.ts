@@ -4,6 +4,7 @@ import { assignRoles, createRoleDeck } from "./roleAssignment.js";
 import { VampireVillageEngine } from "./VampireVillageEngine.js";
 import { checkWinner } from "./winnerCheck.js";
 import { assertCanUseChat } from "./chatPermissions.js";
+import { SKIP_VOTE_ID } from "./voteResolver.js";
 import type { EnginePlayer } from "../core/GameTypes.js";
 import type { InternalPlayer, VampireVillageSettings } from "./VampireVillageTypes.js";
 
@@ -203,6 +204,44 @@ describe("gece, oy ve sohbet kuralları", () => {
     engine.handleAction(alive[1]!.id, { type: "VOTE", targetId: alive[0]!.id });
     engine.advancePhase();
     expect(alive.every((player) => engine.getInternalPlayer(player.id)?.isAlive)).toBe(true);
+  });
+
+  it("oylamayı geç seçeneğini oy olarak kabul eder ve kimseyi elemez", () => {
+    const engine = startedEngine();
+    engine.advancePhase();
+    engine.advancePhase();
+    for (const voter of players) {
+      engine.handleAction(voter.id, { type: "VOTE", targetId: SKIP_VOTE_ID });
+    }
+    engine.advancePhase();
+    expect(players.every((player) => engine.getInternalPlayer(player.id)?.isAlive)).toBe(true);
+    expect(engine.getPublicState().lastVoteTally).toEqual([
+      { targetId: SKIP_VOTE_ID, count: players.length, voterIds: [] }
+    ]);
+  });
+
+  it("oylama sonunda açık odada simgeler için seçmenleri, gizli odada yalnızca adetleri saklar", () => {
+    const publicEngine = new VampireVillageEngine(players, settings({ voteVisibility: "PUBLIC" }));
+    publicEngine.start();
+    publicEngine.advancePhase();
+    publicEngine.advancePhase();
+    publicEngine.advancePhase();
+    publicEngine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[1]!.id });
+    publicEngine.advancePhase();
+    expect(publicEngine.getPublicState().lastVoteTally).toEqual([
+      { targetId: players[1]!.id, count: 1, voterIds: [players[0]!.id] }
+    ]);
+
+    const secretEngine = new VampireVillageEngine(players, settings({ voteVisibility: "SECRET" }));
+    secretEngine.start();
+    secretEngine.advancePhase();
+    secretEngine.advancePhase();
+    secretEngine.advancePhase();
+    secretEngine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[1]!.id });
+    secretEngine.advancePhase();
+    expect(secretEngine.getPublicState().lastVoteTally).toEqual([
+      { targetId: players[1]!.id, count: 1, voterIds: [] }
+    ]);
   });
 });
 
