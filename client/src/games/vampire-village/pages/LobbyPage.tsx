@@ -148,7 +148,7 @@ export function LobbyPage() {
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[.78fr_1.4fr_.9fr]">
+      <div className="grid items-start gap-5 xl:grid-cols-[.78fr_1.4fr_.9fr]">
         <div className="space-y-5">
           <PlayerList
             room={room}
@@ -288,7 +288,9 @@ export function LobbyPage() {
           {!isOwner && <p className="text-center text-xs text-mist">Oyunu oda sahibi başlatacak.</p>}
         </div>
 
-        <ChatPanel messages={messages} channel="LOBBY" disabled={connectionState !== "connected"} onSend={(message) => sendChat("LOBBY", message)} />
+        <div className="self-start xl:sticky xl:top-24">
+          <ChatPanel messages={messages} channel="LOBBY" disabled={connectionState !== "connected"} onSend={(message) => sendChat("LOBBY", message)} />
+        </div>
       </div>
       </div>
     </PageShell>

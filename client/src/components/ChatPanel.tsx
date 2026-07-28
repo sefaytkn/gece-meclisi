@@ -1,4 +1,4 @@
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../types";
 
@@ -7,6 +7,7 @@ interface Props {
   channel: ChatMessage["type"];
   disabled?: boolean;
   className?: string;
+  onClose?: () => void;
   onSend: (message: string) => Promise<void>;
 }
 
@@ -18,7 +19,7 @@ const channelNames: Record<ChatMessage["type"], string> = {
   SYSTEM: "Sistem"
 };
 
-export function ChatPanel({ messages, channel, disabled, className = "", onSend }: Props) {
+export function ChatPanel({ messages, channel, disabled, className = "", onClose, onSend }: Props) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -50,7 +51,20 @@ export function ChatPanel({ messages, channel, disabled, className = "", onSend 
           <Sparkles size={16} className={channel === "VAMPIRE" ? "text-rose-300" : "text-moon"} />
           <h2 className="text-sm font-semibold">{channelNames[channel]}</h2>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-mist">{messages.length} mesaj</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-mist">{messages.length} mesaj</span>
+          {onClose && (
+            <button
+              type="button"
+              className="btn-icon h-8 w-8 rounded-lg"
+              onClick={onClose}
+              aria-label="Sohbeti kapat"
+              title="Sohbeti kapat"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">
         {messages.length === 0 && (

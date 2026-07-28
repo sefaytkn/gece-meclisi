@@ -83,10 +83,6 @@ export function GamePage() {
   }, [game?.phase, game?.round]);
 
   useEffect(() => {
-    if (privateState && !privateState.isAlive) setChatOpen(true);
-  }, [privateState?.isAlive]);
-
-  useEffect(() => {
     const unlock = () => unlockGameAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
@@ -535,6 +531,7 @@ export function GamePage() {
             messages={visibleMessages}
             channel={chatChannel}
             disabled={!chatEnabled || connectionState !== "connected"}
+            onClose={() => setChatOpen(false)}
             onSend={(message) => sendChat(chatChannel, message)}
           />
         </div>
