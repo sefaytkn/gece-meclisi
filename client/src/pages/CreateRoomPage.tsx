@@ -50,10 +50,10 @@ export function CreateRoomPage() {
           <form onSubmit={submit} className="panel mt-8 space-y-5 p-6 sm:p-7">
             <div className="flex items-center justify-between rounded-2xl border border-white/[.07] bg-white/[.025] px-4 py-3">
               <span className="flex min-w-0 items-center gap-3 text-sm">
-                <UserRound size={17} className="shrink-0 text-rose-300" />
+                <UserRound size={17} className="shrink-0 text-gold" />
                 <span className="min-w-0"><strong>{nickname}</strong> olarak oynuyorsun</span>
               </span>
-              <Link to={`/login?next=${encodeURIComponent("/rooms/create")}`} className="shrink-0 text-xs font-semibold text-rose-300 hover:text-rose-200">Değiştir</Link>
+              <Link to={`/login?next=${encodeURIComponent("/rooms/create")}`} className="shrink-0 text-xs font-semibold text-gold hover:text-bone">Değiştir</Link>
             </div>
             <div>
               <label className="label" htmlFor="name">Oda adı</label>
@@ -64,7 +64,7 @@ export function CreateRoomPage() {
                 <label className="label mb-0" htmlFor="maxPlayers">Maksimum oyuncu</label>
                 <span className="font-display text-xl text-white">{maxPlayers}</span>
               </div>
-              <input className="w-full accent-rose-500" id="maxPlayers" type="range" min={4} max={16} value={maxPlayers} onChange={(event) => setMaxPlayers(Number(event.target.value))} />
+              <input className="w-full accent-blood" id="maxPlayers" type="range" min={4} max={16} value={maxPlayers} onChange={(event) => setMaxPlayers(Number(event.target.value))} />
               <div className="mt-1 flex justify-between text-[10px] text-mist"><span>4</span><span>16</span></div>
             </div>
             {error && <p className="rounded-xl border border-rose-400/15 bg-rose-500/[.06] p-3 text-sm text-rose-200">{error}</p>}
@@ -79,8 +79,8 @@ export function CreateRoomPage() {
             { icon: Settings2, title: "Ayrıntılı kurallar", text: "Roller, süreler ve eşitlik kuralları lobi içinde." },
             { icon: Link2, title: "Tek bağlantıyla davet", text: "Bağlantıyı kopyala; arkadaşların oda kodu yazmadan doğrudan katılsın." }
           ].map((item) => (
-            <div key={item.title} className="rounded-2xl border border-white/[.06] bg-white/[.02] p-4">
-              <item.icon size={18} className="text-rose-300" />
+            <div key={item.title} className="rounded-2xl border border-gold/[.12] bg-black/20 p-4 shadow-[0_18px_45px_rgba(0,0,0,.18)]">
+              <item.icon size={18} className="text-gold" />
               <h3 className="mt-3 text-sm font-semibold">{item.title}</h3>
               <p className="mt-1 text-xs leading-5 text-mist">{item.text}</p>
             </div>

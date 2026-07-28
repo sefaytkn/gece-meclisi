@@ -45,7 +45,7 @@ export function ChatPanel({ messages, channel, disabled, className = "", onSend 
 
   return (
     <section className={`panel flex min-h-[420px] flex-col overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between border-b border-white/[.06] px-5 py-4">
+      <div className="flex items-center justify-between border-b border-gold/[.1] px-5 py-4">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className={channel === "VAMPIRE" ? "text-rose-300" : "text-moon"} />
           <h2 className="text-sm font-semibold">{channelNames[channel]}</h2>
@@ -79,7 +79,7 @@ export function ChatPanel({ messages, channel, disabled, className = "", onSend 
         )}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="border-t border-white/[.06] p-4">
+      <form onSubmit={submit} className="border-t border-gold/[.1] p-4">
         {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
         <div className="flex gap-2">
           <input
@@ -90,7 +90,7 @@ export function ChatPanel({ messages, channel, disabled, className = "", onSend 
             disabled={disabled || sending}
             aria-label="Sohbet mesajı"
           />
-          <button className="btn-icon h-11 w-11 shrink-0 bg-rose-500 text-white hover:bg-rose-400" disabled={disabled || sending || !message.trim()} aria-label="Mesaj gönder">
+          <button className="btn-icon h-11 w-11 shrink-0 border-ember/30 bg-blood text-bone hover:bg-[#a52435]" disabled={disabled || sending || !message.trim()} aria-label="Mesaj gönder">
             <Send size={17} />
           </button>
         </div>

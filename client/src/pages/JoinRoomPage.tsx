@@ -49,7 +49,7 @@ export function JoinRoomPage() {
     <PageShell>
       <div className="mx-auto max-w-lg">
         <div className="text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-rose-400/15 bg-rose-500/[.07] text-rose-300">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-gold/20 bg-blood/15 text-gold shadow-glow">
             {inviteCode ? <Link2 size={22} /> : <KeyRound size={22} />}
           </div>
           <p className="eyebrow mt-5">{inviteCode ? "DAVET BAĞLANTISI" : "ÖZEL ODA"}</p>
@@ -76,10 +76,10 @@ export function JoinRoomPage() {
           {nickname ? (
             <div className="flex items-center justify-between rounded-2xl border border-white/[.07] bg-white/[.025] px-4 py-3">
               <span className="flex min-w-0 items-center gap-3 text-sm">
-                <UserRound size={17} className="shrink-0 text-rose-300" />
+                <UserRound size={17} className="shrink-0 text-gold" />
                 <span className="min-w-0"><strong>{nickname}</strong> olarak katılacaksın</span>
               </span>
-              <Link to={`/login?next=${encodeURIComponent(`/rooms/join?code=${inviteCode}`)}`} className="shrink-0 text-xs font-semibold text-rose-300 hover:text-rose-200">Değiştir</Link>
+              <Link to={`/login?next=${encodeURIComponent(`/rooms/join?code=${inviteCode}`)}`} className="shrink-0 text-xs font-semibold text-gold hover:text-bone">Değiştir</Link>
             </div>
           ) : (
             <div>

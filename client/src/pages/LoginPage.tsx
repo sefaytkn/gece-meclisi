@@ -62,7 +62,7 @@ export function LoginPage() {
 
 function PlayerEntryLayout({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-ink px-5 py-10 text-white">
+    <div className="site-shell relative grid min-h-screen place-items-center overflow-hidden bg-ink px-5 py-10 text-bone">
       <div className="ambient ambient-one" />
       <div className="absolute left-5 top-5 z-10 sm:left-8 sm:top-8"><Logo /></div>
       <div className="hero-grid absolute inset-0 opacity-60" />
@@ -70,7 +70,7 @@ function PlayerEntryLayout({ title, subtitle, children }: { title: string; subti
         <p className="eyebrow">GECE MECLİSİ</p>
         <h1 className="mt-3 font-display text-3xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-mist">{subtitle}</p>
-        <div className="my-7 h-px bg-white/[.07]" />
+        <div className="my-7 h-px bg-gold/[.12]" />
         {children}
       </div>
     </div>

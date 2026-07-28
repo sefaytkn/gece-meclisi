@@ -29,13 +29,13 @@ export function RoleSettings({ settings, validation, disabled, playerCount, onCh
           <h2 className="mt-2 text-xl font-semibold">Kimler bu gece kasabada?</h2>
           <p className="mt-1 text-sm text-mist">Roller oyun başlarken sunucuda gizlice dağıtılır.</p>
         </div>
-        <div className="flex rounded-xl border border-white/[.08] bg-black/20 p-1">
+        <div className="flex rounded-xl border border-gold/[.12] bg-black/25 p-1">
           {(["BALANCED", "FREE"] as const).map((mode) => (
             <button
               key={mode}
               disabled={disabled}
               onClick={() => onChange({ ...settings, mode })}
-              className={`rounded-lg px-3 py-2 text-xs font-bold transition ${settings.mode === mode ? "bg-white text-ink" : "text-mist hover:text-white"}`}
+              className={`rounded-lg px-3 py-2 text-xs font-bold transition ${settings.mode === mode ? "bg-gold text-ink" : "text-mist hover:text-bone"}`}
             >
               {mode === "BALANCED" ? "Dengeli" : "Serbest"}
             </button>
@@ -44,7 +44,7 @@ export function RoleSettings({ settings, validation, disabled, playerCount, onCh
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {roles.map((role) => (
-          <div key={role.key} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4">
+          <div key={role.key} className="rounded-2xl border border-gold/[.1] bg-black/20 p-4">
             <div className="flex items-center gap-3">
               <span className={`grid h-9 w-9 place-items-center rounded-xl border text-xs font-black ${role.color}`}>{role.icon}</span>
               <span className="font-semibold">{role.label}</span>

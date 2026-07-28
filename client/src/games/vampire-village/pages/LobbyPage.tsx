@@ -112,7 +112,7 @@ export function LobbyPage() {
           <p className="mt-2 text-sm text-mist">Tüm oyuncular hazır olduğunda oda sahibi geceyi başlatabilir.</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="rounded-xl border border-white/[.08] bg-white/[.03] px-4 py-2">
+          <div className="rounded-xl border border-gold/[.12] bg-black/25 px-4 py-2">
             <p className="text-[9px] font-black uppercase tracking-widest text-mist">ODA KODU</p>
             <p className="font-display text-lg tracking-[.18em]">{room.code}</p>
           </div>
@@ -122,7 +122,7 @@ export function LobbyPage() {
 
       <section className="panel mb-5 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-rose-500/10 text-rose-300"><Link2 size={19} /></span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-gold/[.14] bg-blood/15 text-gold"><Link2 size={19} /></span>
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">Arkadaşlarını bu odaya davet et</h2>
             <p className="mt-1 truncate text-xs text-mist">{inviteUrl}</p>
@@ -177,7 +177,7 @@ export function LobbyPage() {
           <section className="panel overflow-hidden">
             <button className="flex w-full items-center justify-between p-5 text-left" onClick={() => setAdvanced((value) => !value)}>
               <span className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.04] text-mist"><SlidersHorizontal size={17} /></span>
+                <span className="grid h-9 w-9 place-items-center rounded-xl border border-gold/[.1] bg-gold/[.04] text-gold"><SlidersHorizontal size={17} /></span>
                 <span>
                   <span className="block text-sm font-semibold">Gelişmiş oyun kuralları</span>
                   <span className="mt-0.5 block text-xs text-mist">Süreler, koruma ve oylama</span>
@@ -186,8 +186,8 @@ export function LobbyPage() {
               <Settings2 size={17} className="text-mist" />
             </button>
             {advanced && (
-              <div className="grid gap-4 border-t border-white/[.06] p-5 sm:grid-cols-2">
-                <label className="rounded-2xl border border-white/[.06] bg-white/[.02] p-4 text-xs text-mist sm:col-span-2">
+              <div className="grid gap-4 border-t border-gold/[.1] p-5 sm:grid-cols-2">
+                <label className="rounded-2xl border border-gold/[.1] bg-black/20 p-4 text-xs text-mist sm:col-span-2">
                   <span className="mb-3 flex items-center justify-between gap-4">
                     <span>
                       <span className="block font-semibold text-white">Oda kapasitesi</span>
@@ -196,7 +196,7 @@ export function LobbyPage() {
                     <span className="font-display text-2xl text-white">{room.maxPlayers}</span>
                   </span>
                   <input
-                    className="w-full accent-rose-500"
+                    className="w-full accent-blood"
                     type="range"
                     min={Math.max(4, room.players.length)}
                     max={16}
@@ -218,7 +218,7 @@ export function LobbyPage() {
                   <label key={item.key} className="text-xs text-mist">
                     <span className="mb-2 flex justify-between"><span>{item.label}</span><span>{room.settings[item.key as keyof RoomSettings] as number} sn</span></span>
                     <input
-                      className="w-full accent-rose-500"
+                      className="w-full accent-blood"
                       type="range"
                       min={item.min}
                       max={item.max}
@@ -231,11 +231,11 @@ export function LobbyPage() {
                 ))}
                 <label className="flex items-center justify-between rounded-xl border border-white/[.06] p-3 text-xs text-mist">
                   Doktor kendini koruyabilir
-                  <input type="checkbox" className="accent-rose-500" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.doctorCanSelfProtect} onChange={(event) => void updateSettings({ ...room.settings, doctorCanSelfProtect: event.target.checked })} />
+                  <input type="checkbox" className="accent-blood" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.doctorCanSelfProtect} onChange={(event) => void updateSettings({ ...room.settings, doctorCanSelfProtect: event.target.checked })} />
                 </label>
                 <label className="flex items-center justify-between rounded-xl border border-white/[.06] p-3 text-xs text-mist">
                   Oy değiştirilebilir
-                  <input type="checkbox" className="accent-rose-500" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.canChangeVote} onChange={(event) => void updateSettings({ ...room.settings, canChangeVote: event.target.checked })} />
+                  <input type="checkbox" className="accent-blood" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.canChangeVote} onChange={(event) => void updateSettings({ ...room.settings, canChangeVote: event.target.checked })} />
                 </label>
                 <fieldset className="rounded-xl border border-white/[.06] p-3 text-xs text-mist">
                   <legend className="px-1">Oylama görünürlüğü</legend>
@@ -253,8 +253,8 @@ export function LobbyPage() {
                           disabled={!isOwner || busy || connectionState !== "connected"}
                           className={`rounded-xl border p-3 text-left transition disabled:pointer-events-none disabled:opacity-45 ${
                             selected
-                              ? "border-rose-400/35 bg-rose-500/[.09] text-white"
-                              : "border-white/[.07] bg-white/[.025] text-mist hover:border-white/[.14] hover:text-white"
+                              ? "border-gold/35 bg-gold/[.09] text-bone"
+                              : "border-gold/[.08] bg-black/20 text-mist hover:border-gold/20 hover:text-bone"
                           }`}
                           onClick={() => void updateSettings({ ...room.settings, voteVisibility: option.value })}
                         >
@@ -270,7 +270,7 @@ export function LobbyPage() {
                     <span className="block text-white">Ölüler rolleri görebilir</span>
                     <span className="mt-1 block text-[10px] leading-4">Elenen oyuncular herkesin rolünü görür.</span>
                   </span>
-                  <input type="checkbox" className="shrink-0 accent-rose-500" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.deadCanSeeRoles} onChange={(event) => void updateSettings({ ...room.settings, deadCanSeeRoles: event.target.checked })} />
+                  <input type="checkbox" className="shrink-0 accent-blood" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.deadCanSeeRoles} onChange={(event) => void updateSettings({ ...room.settings, deadCanSeeRoles: event.target.checked })} />
                 </label>
               </div>
             )}

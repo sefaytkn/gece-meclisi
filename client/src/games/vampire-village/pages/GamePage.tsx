@@ -256,12 +256,12 @@ export function GamePage() {
         </div>
         <div className="flex items-center gap-3">
           {game.phaseEndsAt && (
-            <div className="flex items-center gap-3 rounded-2xl border border-white/[.08] bg-white/[.03] px-4 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl border border-gold/[.12] bg-black/25 px-4 py-2.5">
               <Clock3 size={16} className={seconds <= 10 ? "text-rose-300" : "text-mist"} />
               <span className="font-display text-xl tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</span>
             </div>
           )}
-          <span className="rounded-xl border border-white/[.08] bg-white/[.03] px-3 py-3 text-xs text-mist">{room.code}</span>
+          <span className="rounded-xl border border-gold/[.12] bg-black/25 px-3 py-3 text-xs text-gold">{room.code}</span>
         </div>
       </div>
 
@@ -274,8 +274,8 @@ export function GamePage() {
       )}
 
       {game.lastResult && (
-        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-indigo-400/10 bg-indigo-400/[.04] p-4 text-sm text-moon/80">
-          <Sparkles size={17} className="shrink-0 text-indigo-300" /> {game.lastResult}
+        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-gold/[.12] bg-gold/[.04] p-4 text-sm text-bone/80">
+          <Sparkles size={17} className="shrink-0 text-gold" /> {game.lastResult}
         </div>
       )}
       {actionError && <div className="mb-5 rounded-2xl border border-rose-400/15 bg-rose-500/[.06] p-4 text-sm text-rose-200">{actionError}</div>}
@@ -460,7 +460,7 @@ export function GamePage() {
               {!chatOpen && visibleMessages.length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white">{Math.min(99, visibleMessages.length)}</span>}
             </button>
             <button
-              className={`btn-icon ${roleVisible ? "border-indigo-400/30 bg-indigo-500/10 text-indigo-200" : ""}`}
+              className={`btn-icon ${roleVisible ? "border-gold/30 bg-gold/10 text-gold" : ""}`}
               onClick={() => setRoleVisible((visible) => !visible)}
               aria-label={roleVisible ? "Rolü gizle" : "Rolü göster"}
               title={roleVisible ? "Rolü gizle" : "Rolü göster"}

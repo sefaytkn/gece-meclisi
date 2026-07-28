@@ -71,7 +71,7 @@ export function VampireInfoPage() {
             <div key={phase.title} className="flex gap-4 p-5 sm:p-6">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/[.04] text-moon"><phase.icon size={18} /></div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-300">0{index + 1}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gold">0{index + 1}</p>
                 <h3 className="mt-1 font-semibold">{phase.title}</h3>
                 <p className="mt-1 text-sm leading-6 text-mist">{phase.text}</p>
               </div>

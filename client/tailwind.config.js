@@ -4,16 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#09090d",
-        panel: "#111118",
-        blood: "#e11d48",
-        ember: "#fb7185",
-        moon: "#d7d5ff",
-        mist: "#9896ad"
+        ink: "#070708",
+        panel: "#121013",
+        blood: "#8f1d2c",
+        ember: "#c54a57",
+        moon: "#eee8dc",
+        mist: "#a9a195",
+        bone: "#eee8dc",
+        gold: "#bda56a"
       },
       boxShadow: {
-        glow: "0 0 50px rgba(225,29,72,.18)",
-        panel: "0 25px 70px rgba(0,0,0,.35)"
+        glow: "0 0 50px rgba(143,29,44,.24)",
+        panel: "0 25px 70px rgba(0,0,0,.48)"
       }
     }
   },

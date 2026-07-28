@@ -13,7 +13,7 @@ export function PlayerList({ room, currentPlayerId, onKick }: Props) {
 
   return (
     <section className="panel overflow-hidden">
-      <div className="flex items-center justify-between border-b border-white/[.06] px-5 py-4">
+      <div className="flex items-center justify-between border-b border-gold/[.1] px-5 py-4">
         <div>
           <p className="eyebrow">OYUNCULAR</p>
           <h2 className="mt-1 font-display text-2xl font-semibold text-emerald-300">{room.players.length} / {room.maxPlayers}</h2>
@@ -28,9 +28,9 @@ export function PlayerList({ room, currentPlayerId, onKick }: Props) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-semibold text-white">{player.nickname}</span>
+                <span className="truncate text-sm font-semibold text-bone">{player.nickname}</span>
                 {player.id === room.ownerPlayerId && <Crown size={14} className="text-amber-300" aria-label="Oda sahibi" />}
-                {player.id === currentPlayerId && <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Sen</span>}
+                {player.id === currentPlayerId && <span className="text-[10px] font-bold uppercase tracking-wider text-gold">Sen</span>}
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11px] text-mist">
                 {player.isConnected ? <Signal size={12} className="text-emerald-400" /> : <SignalLow size={12} className="text-amber-400" />}

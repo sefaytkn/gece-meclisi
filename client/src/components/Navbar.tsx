@@ -14,7 +14,7 @@ export function Navbar() {
   const { nickname } = usePlayer();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[.06] bg-ink/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-gold/[.1] bg-[#070708]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
         <Logo />
         <nav className="hidden items-center gap-8 md:flex" aria-label="Ana menü">
@@ -22,7 +22,7 @@ export function Navbar() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `text-sm transition ${isActive ? "text-white" : "text-mist hover:text-white"}`}
+              className={({ isActive }) => `text-sm transition ${isActive ? "text-gold" : "text-mist hover:text-bone"}`}
             >
               {item.label}
             </NavLink>
@@ -48,14 +48,14 @@ export function Navbar() {
         </button>
       </div>
       {open && (
-        <div id="mobile-navigation" className="border-t border-white/[.06] bg-panel px-5 py-5 md:hidden">
+        <div id="mobile-navigation" className="border-t border-gold/[.1] bg-panel px-5 py-5 md:hidden">
           <div className="flex flex-col gap-2">
             {navItems.map((item) => (
-              <Link key={item.to} to={item.to} className="rounded-xl px-4 py-3 text-mist hover:bg-white/5 hover:text-white" onClick={() => setOpen(false)}>
+              <Link key={item.to} to={item.to} className="rounded-xl px-4 py-3 text-mist hover:bg-gold/[.06] hover:text-bone" onClick={() => setOpen(false)}>
                 {item.label}
               </Link>
             ))}
-            <div className="my-2 h-px bg-white/[.06]" />
+            <div className="my-2 h-px bg-gold/[.1]" />
             {nickname ? (
               <Link to="/login" className="btn-secondary justify-center" onClick={() => setOpen(false)}>
                 <UserRound size={16} /> {nickname} · adı değiştir
