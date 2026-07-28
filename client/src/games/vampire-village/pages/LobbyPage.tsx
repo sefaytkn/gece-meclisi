@@ -1,5 +1,5 @@
 import { ArrowLeft, Copy, Link2, LoaderCircle, Play, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
 import { PageShell } from "../../../components/PageShell";
@@ -11,6 +11,11 @@ import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { Room, RoomSettings } from "../../../types";
 
+type DurationKey = "nightSeconds" | "discussionSeconds" | "votingSeconds";
+
+const rangeStyle = (value: number, min: number, max: number) =>
+  ({ "--range-progress": `${max <= min ? 100 : ((value - min) / (max - min)) * 100}%` }) as CSSProperties;
+
 export function LobbyPage() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
@@ -20,7 +25,10 @@ export function LobbyPage() {
   const [inviteCopied, setInviteCopied] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [draftMaxPlayers, setDraftMaxPlayers] = useState<number | null>(null);
+  const [draftDurations, setDraftDurations] = useState<Record<DurationKey, number> | null>(null);
   const busyRef = useRef(false);
+  const activeSliderRef = useRef<string | null>(null);
 
   const currentPlayer = room?.players.find((player) => player.id === session?.playerId);
   const isOwner = room?.ownerPlayerId === session?.playerId;
@@ -34,6 +42,21 @@ export function LobbyPage() {
   useEffect(() => {
     if (room?.status === "WAITING") sessionStorage.removeItem(`gece:village-night:${room.code}`);
   }, [room?.code, room?.status]);
+
+  useEffect(() => {
+    if (!room || activeSliderRef.current) return;
+    setDraftMaxPlayers(room.maxPlayers);
+    setDraftDurations({
+      nightSeconds: room.settings.nightSeconds,
+      discussionSeconds: room.settings.discussionSeconds,
+      votingSeconds: room.settings.votingSeconds
+    });
+  }, [
+    room?.maxPlayers,
+    room?.settings.nightSeconds,
+    room?.settings.discussionSeconds,
+    room?.settings.votingSeconds
+  ]);
 
   const run = async (action: () => Promise<unknown>) => {
     if (busyRef.current || connectionState !== "connected") return;
@@ -54,6 +77,16 @@ export function LobbyPage() {
     run(() => emitAck<{ room: Room }>("room:update-settings", { settings }));
   const updateMaxPlayers = (maxPlayers: number) =>
     run(() => emitAck<{ room: Room }>("room:update-settings", { maxPlayers }));
+
+  const commitMaxPlayers = (maxPlayers: number) => {
+    activeSliderRef.current = null;
+    if (room && maxPlayers !== room.maxPlayers) void updateMaxPlayers(maxPlayers);
+  };
+
+  const commitDuration = (key: DurationKey, value: number) => {
+    activeSliderRef.current = null;
+    if (room && value !== room.settings[key]) void updateSettings({ ...room.settings, [key]: value });
+  };
 
   const copyCode = async () => {
     await navigator.clipboard.writeText(room?.code ?? code);
@@ -134,6 +167,35 @@ export function LobbyPage() {
         </button>
       </section>
 
+      <section className={`panel mb-5 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${
+        currentPlayer?.isReady ? "border-emerald-400/20 bg-emerald-950/20" : "border-gold/25"
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${
+            currentPlayer?.isReady
+              ? "bg-emerald-400/10 text-emerald-300"
+              : "bg-gold/10 text-gold shadow-[0_0_28px_rgba(189,165,106,.14)]"
+          }`}>
+            <ShieldCheck size={22} />
+          </span>
+          <div>
+            <p className="text-sm font-bold">{currentPlayer?.isReady ? "Hazırsın, diğer oyuncular bekleniyor." : "Oyuna başlamaya hazır mısın?"}</p>
+            <p className="mt-1 text-xs text-mist">Herkes hazır olduğunda oda sahibi geceyi başlatabilir.</p>
+          </div>
+        </div>
+        <button
+          className={`min-h-12 shrink-0 justify-center px-7 ${
+            currentPlayer?.isReady
+              ? "btn-secondary border-emerald-400/25 text-emerald-200"
+              : "inline-flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-600 text-sm font-black text-white shadow-[0_12px_34px_rgba(5,150,105,.3)] transition hover:-translate-y-0.5 hover:bg-emerald-500"
+          }`}
+          disabled={!currentPlayer || busy || connectionState !== "connected"}
+          onClick={() => void run(() => emitAck("room:ready", { ready: !currentPlayer?.isReady }))}
+        >
+          <ShieldCheck size={18} /> {currentPlayer?.isReady ? "Hazır durumunu geri al" : "HAZIRIM"}
+        </button>
+      </section>
+
       {connectionState !== "connected" && (
         <div className="mb-5 rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4 text-sm text-amber-100" role="status">
           {connectionState === "reconnecting" || connectionState === "connecting"
@@ -155,13 +217,6 @@ export function LobbyPage() {
             currentPlayerId={session?.playerId}
             onKick={isOwner && !busy ? (targetId) => void run(() => emitAck("room:kick", { targetId })) : undefined}
           />
-          <button
-            className={`w-full ${currentPlayer?.isReady ? "btn-secondary justify-center" : "btn-primary justify-center"}`}
-            disabled={busy || connectionState !== "connected"}
-            onClick={() => void run(() => emitAck("room:ready", { ready: !currentPlayer?.isReady }))}
-          >
-            <ShieldCheck size={17} /> {currentPlayer?.isReady ? "Hazır değilim" : "Hazırım"}
-          </button>
           <button className="btn-ghost w-full justify-center text-xs" disabled={busy} onClick={() => void leave()}>Odadan ayrıl</button>
         </div>
 
@@ -193,42 +248,79 @@ export function LobbyPage() {
                       <span className="block font-semibold text-white">Oda kapasitesi</span>
                       <span className="mt-1 block text-[10px] leading-4">Odaya katılabilecek en fazla oyuncu sayısı.</span>
                     </span>
-                    <span className="font-display text-2xl text-white">{room.maxPlayers}</span>
+                    <span className="rounded-xl border border-gold/15 bg-gold/[.06] px-3 py-1 font-display text-2xl text-gold">
+                      {draftMaxPlayers ?? room.maxPlayers}
+                    </span>
                   </span>
                   <input
-                    className="w-full accent-blood"
+                    className="range-slider w-full"
                     type="range"
                     min={Math.max(4, room.players.length)}
                     max={16}
                     step={1}
                     disabled={!isOwner || busy || connectionState !== "connected"}
-                    value={room.maxPlayers}
-                    onChange={(event) => void updateMaxPlayers(Number(event.target.value))}
+                    value={draftMaxPlayers ?? room.maxPlayers}
+                    style={rangeStyle(draftMaxPlayers ?? room.maxPlayers, Math.max(4, room.players.length), 16)}
+                    onPointerDown={() => { activeSliderRef.current = "maxPlayers"; }}
+                    onChange={(event) => setDraftMaxPlayers(Number(event.target.value))}
+                    onPointerUp={(event) => commitMaxPlayers(Number(event.currentTarget.value))}
+                    onKeyUp={(event) => commitMaxPlayers(Number(event.currentTarget.value))}
+                    onBlur={(event) => commitMaxPlayers(Number(event.currentTarget.value))}
                   />
                   <span className="mt-2 flex justify-between text-[10px]">
                     <span>En az {Math.max(4, room.players.length)}</span>
                     <span>En fazla 16</span>
                   </span>
                 </label>
-                {[
-                  { key: "nightSeconds", label: "Gece süresi", min: 15, max: 180 },
-                  { key: "discussionSeconds", label: "Tartışma süresi", min: 15, max: 300 },
-                  { key: "votingSeconds", label: "Oylama süresi", min: 15, max: 180 }
-                ].map((item) => (
-                  <label key={item.key} className="text-xs text-mist">
-                    <span className="mb-2 flex justify-between"><span>{item.label}</span><span>{room.settings[item.key as keyof RoomSettings] as number} sn</span></span>
-                    <input
-                      className="w-full accent-blood"
-                      type="range"
-                      min={item.min}
-                      max={item.max}
-                      step={5}
-                      disabled={!isOwner || busy || connectionState !== "connected"}
-                      value={room.settings[item.key as keyof RoomSettings] as number}
-                      onChange={(event) => void updateSettings({ ...room.settings, [item.key]: Number(event.target.value) })}
-                    />
-                  </label>
-                ))}
+                <section className="rounded-2xl border border-gold/[.1] bg-black/20 p-4 sm:col-span-2">
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold text-bone">Süre ayarları</p>
+                    <p className="mt-1 text-[10px] leading-4 text-mist">Çubuğu sürükle; seçtiğin süre bıraktığında kaydedilir.</p>
+                  </div>
+                  <div className="space-y-6">
+                    {([
+                      { key: "nightSeconds" as const, label: "Gece süresi", min: 15, max: 180 },
+                      { key: "discussionSeconds" as const, label: "Tartışma süresi", min: 15, max: 300 },
+                      { key: "votingSeconds" as const, label: "Oylama süresi", min: 15, max: 180 }
+                    ]).map((item) => {
+                      const value = draftDurations?.[item.key] ?? room.settings[item.key];
+                      return (
+                        <label key={item.key} className="block text-xs text-mist">
+                          <span className="mb-2 flex items-center justify-between gap-4">
+                            <span className="font-semibold text-bone">{item.label}</span>
+                            <span className="min-w-16 rounded-lg border border-gold/15 bg-gold/[.06] px-2.5 py-1 text-center font-bold tabular-nums text-gold">
+                              {value} sn
+                            </span>
+                          </span>
+                          <input
+                            className="range-slider w-full"
+                            type="range"
+                            min={item.min}
+                            max={item.max}
+                            step={5}
+                            disabled={!isOwner || busy || connectionState !== "connected"}
+                            value={value}
+                            style={rangeStyle(value, item.min, item.max)}
+                            onPointerDown={() => { activeSliderRef.current = item.key; }}
+                            onChange={(event) => setDraftDurations((current) => ({
+                              nightSeconds: current?.nightSeconds ?? room.settings.nightSeconds,
+                              discussionSeconds: current?.discussionSeconds ?? room.settings.discussionSeconds,
+                              votingSeconds: current?.votingSeconds ?? room.settings.votingSeconds,
+                              [item.key]: Number(event.target.value)
+                            }))}
+                            onPointerUp={(event) => commitDuration(item.key, Number(event.currentTarget.value))}
+                            onKeyUp={(event) => commitDuration(item.key, Number(event.currentTarget.value))}
+                            onBlur={(event) => commitDuration(item.key, Number(event.currentTarget.value))}
+                          />
+                          <span className="mt-1 flex justify-between text-[9px] text-mist/70">
+                            <span>{item.min} sn</span>
+                            <span>{item.max} sn</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
                 <label className="flex items-center justify-between rounded-xl border border-white/[.06] p-3 text-xs text-mist">
                   Doktor kendini koruyabilir
                   <input type="checkbox" className="accent-blood" disabled={!isOwner || busy || connectionState !== "connected"} checked={room.settings.doctorCanSelfProtect} onChange={(event) => void updateSettings({ ...room.settings, doctorCanSelfProtect: event.target.checked })} />
