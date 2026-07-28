@@ -1,4 +1,4 @@
-import { ArrowRight, LockKeyhole, MessageCircle, MoonStar, ShieldCheck, Swords, UsersRound } from "lucide-react";
+import { ArrowRight, DoorOpen, LockKeyhole, MessageCircle, MoonStar, Plus, ShieldCheck, Swords, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageShell } from "../components/PageShell";
 
@@ -25,12 +25,28 @@ export function HomePage() {
             <p className="mt-7 max-w-xl text-balance text-base leading-7 text-mist sm:text-lg">
               Odanı kur, davet bağlantısını arkadaşlarına gönder ve güneşi kimin göreceğine birlikte karar ver. Hesap yok; yalnızca oyuncu adın ve keskin sezgilerin.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link to="/rooms/create" className="btn-primary justify-center px-6">
-                Oda oluştur <ArrowRight size={17} />
+            <div className="mt-9 grid gap-3 sm:grid-cols-2">
+              <Link
+                to="/rooms/create"
+                className="group flex min-h-[76px] items-center gap-4 rounded-2xl bg-rose-600 px-5 py-4 text-white shadow-[0_18px_45px_rgba(225,29,72,.32)] transition hover:-translate-y-1 hover:bg-rose-500"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15"><Plus size={23} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-black">Oda oluştur</span>
+                  <span className="mt-0.5 block text-xs text-rose-100/75">Yeni bir oyun başlat</span>
+                </span>
+                <ArrowRight className="transition group-hover:translate-x-1" size={19} />
               </Link>
-              <Link to="/rooms/join" className="btn-secondary justify-center px-6">
-                Kodu gir, katıl
+              <Link
+                to="/rooms/join"
+                className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-rose-300/25 bg-rose-400/[.07] px-5 py-4 text-white shadow-[0_16px_38px_rgba(0,0,0,.22)] transition hover:-translate-y-1 hover:border-rose-300/45 hover:bg-rose-400/[.12]"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.06] text-rose-200"><DoorOpen size={22} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-black">Kodu gir, katıl</span>
+                  <span className="mt-0.5 block text-xs text-mist">Arkadaşının odasına gir</span>
+                </span>
+                <ArrowRight className="text-rose-200 transition group-hover:translate-x-1" size={19} />
               </Link>
             </div>
             <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-xs text-mist">

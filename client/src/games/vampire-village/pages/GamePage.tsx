@@ -1,10 +1,11 @@
-import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Target, UsersRound, Vote, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
 import { PageShell } from "../../../components/PageShell";
 import { useCountdown } from "../../../hooks/useCountdown";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
+import { playDeathSound, unlockGameAudio } from "../../../services/gameAudio";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { ChatMessage, GamePlayer, GameState, Role } from "../../../types";
@@ -42,6 +43,9 @@ export function GamePage() {
   const [actionPending, setActionPending] = useState(false);
   const [roleVisible, setRoleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [deathEffectVisible, setDeathEffectVisible] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
+  const wasAliveRef = useRef<boolean | null>(null);
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
@@ -68,6 +72,47 @@ export function GamePage() {
   useEffect(() => {
     if (privateState && !privateState.isAlive) setChatOpen(true);
   }, [privateState?.isAlive]);
+
+  useEffect(() => {
+    const unlock = () => unlockGameAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!privateState) return;
+    if (wasAliveRef.current === null) {
+      wasAliveRef.current = privateState.isAlive;
+      return;
+    }
+
+    const wasEliminated = wasAliveRef.current && !privateState.isAlive;
+    wasAliveRef.current = privateState.isAlive;
+    if (!wasEliminated) return;
+
+    setDeathEffectVisible(true);
+    if (soundEnabled) {
+      try {
+        playDeathSound();
+      } catch {
+        // The visual effect still works when the browser blocks audio playback.
+      }
+    }
+    const timeout = window.setTimeout(() => setDeathEffectVisible(false), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [privateState?.isAlive, soundEnabled]);
+
+  const toggleSound = () => {
+    setSoundEnabled((enabled) => {
+      const next = !enabled;
+      localStorage.setItem("gece:sound-enabled", String(next));
+      return next;
+    });
+  };
 
   const submitAction = async () => {
     if (!selected || !game) return;
@@ -131,7 +176,10 @@ export function GamePage() {
   const showVoteResult = (game.phase === "ROUND_RESULT" || game.phase === "FINISHED") && lastVoteTally.length > 0;
 
   return (
-    <PageShell>
+    <PageShell full>
+      <div className="game-stage mx-auto min-h-[calc(100vh-5rem)] w-full max-w-[1760px] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+      <Moon className="game-watermark game-watermark-moon" aria-hidden="true" />
+      <Swords className="game-watermark game-watermark-swords" aria-hidden="true" />
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -186,9 +234,9 @@ export function GamePage() {
         </section>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_3.5rem]">
         <main className="min-w-0 space-y-5">
-          <section className={`panel flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between ${roleVisible ? myTheme.className : ""}`}>
+          <section className={`game-role-strip flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${roleVisible ? myTheme.className : ""}`}>
             <div className="flex min-w-0 items-center gap-3">
               <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${roleVisible ? "bg-black/20" : "bg-white/[.05] text-mist"}`}>
                 {roleVisible ? <RoleIcon size={19} /> : <EyeOff size={18} />}
@@ -222,7 +270,7 @@ export function GamePage() {
               voteVisibility={room.settings.voteVisibility}
             />
           ) : showActionPanel ? (
-            <section className="panel overflow-hidden">
+            <section className="game-board-panel overflow-hidden rounded-3xl border">
               <div className={`border-b p-5 sm:p-6 ${canVote ? "border-amber-300/10 bg-amber-300/[.035]" : privateState.role === "DOCTOR" ? "border-emerald-300/10 bg-emerald-300/[.035]" : "border-rose-300/10 bg-rose-300/[.035]"}`}>
                 <div className="flex items-start gap-4">
                   <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${canVote ? "bg-amber-300/10 text-amber-200" : privateState.role === "DOCTOR" ? "bg-emerald-300/10 text-emerald-200" : "bg-rose-300/10 text-rose-200"}`}>
@@ -241,7 +289,7 @@ export function GamePage() {
                 </div>
               </div>
               <div className="p-5 sm:p-6">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {actionCandidates.map((player) => {
                     const unavailable =
                       !player.isAlive ||
@@ -254,7 +302,7 @@ export function GamePage() {
                       key={player.id}
                       disabled={actionLocked || unavailable}
                       onClick={() => setSelected(player.id)}
-                      className={`relative min-h-32 overflow-hidden rounded-2xl border p-4 text-left transition ${
+                      className={`relative min-h-44 overflow-hidden rounded-2xl border p-5 text-left transition ${
                         !player.isAlive
                           ? "border-rose-400/15 bg-rose-950/25 opacity-55"
                           : selected === player.id
@@ -263,8 +311,8 @@ export function GamePage() {
                       }`}
                     >
                       <span className="flex items-start gap-3">
-                        <span className={`avatar h-12 w-12 shrink-0 text-xs font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
-                          {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={23} />}
+                        <span className={`avatar h-16 w-16 shrink-0 rounded-2xl text-sm font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : "border-slate-300/15 bg-slate-300/[.06] text-slate-100"}`}>
+                          {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={27} />}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className={`block truncate text-sm font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
@@ -334,8 +382,8 @@ export function GamePage() {
           )}
         </main>
 
-        <aside className={`grid items-start gap-3 xl:sticky xl:top-24 ${chatOpen ? "xl:grid-cols-[3.25rem_21rem]" : "xl:grid-cols-[3.25rem]"}`}>
-          <nav className="panel flex gap-2 p-2 xl:flex-col" aria-label="Oyun araçları">
+        <aside className="xl:sticky xl:top-24">
+          <nav className="game-tool-rail flex gap-2 rounded-2xl border border-slate-500/15 bg-[#0a0f18]/90 p-2 shadow-2xl backdrop-blur-xl xl:flex-col" aria-label="Oyun araçları">
             <button
               className={`btn-icon relative ${chatOpen ? "border-rose-400/30 bg-rose-500/10 text-rose-200" : ""}`}
               onClick={() => setChatOpen((open) => !open)}
@@ -353,23 +401,42 @@ export function GamePage() {
             >
               {roleVisible ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
+            <button
+              className={`btn-icon ${soundEnabled ? "text-amber-200" : ""}`}
+              onClick={toggleSound}
+              aria-label={soundEnabled ? "Oyun sesini kapat" : "Oyun sesini aç"}
+              title={soundEnabled ? "Oyun sesini kapat" : "Oyun sesini aç"}
+            >
+              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
             <div className="hidden h-px bg-white/[.06] xl:block" />
             <span className="btn-icon pointer-events-none" title={`${game.players.filter((player) => player.isAlive).length} kişi hayatta`}>
               <UsersRound size={18} />
             </span>
           </nav>
-          {chatOpen && (
-            <div className="min-w-0">
-              {!privateState.isAlive && (
-                <div className="mb-3 rounded-2xl border border-rose-400/15 bg-rose-500/[.06] px-4 py-3 text-xs text-rose-100">
-                  Bu sohbeti yalnızca ölen oyuncular görebilir.
-                </div>
-              )}
-              <ChatPanel messages={visibleMessages} channel={chatChannel} disabled={!chatEnabled || connectionState !== "connected"} onSend={(message) => sendChat(chatChannel, message)} />
-            </div>
-          )}
         </aside>
       </div>
+
+      {chatOpen && (
+        <div className="fixed inset-x-4 bottom-4 top-24 z-50 ml-auto flex max-w-[25rem] flex-col sm:right-6 sm:left-auto sm:w-[25rem]">
+          {!privateState.isAlive && (
+            <div className="mb-3 rounded-2xl border border-rose-400/20 bg-[#160b10]/95 px-4 py-3 text-xs text-rose-100 shadow-2xl backdrop-blur-xl">
+              Bu sohbeti yalnızca ölen oyuncular görebilir.
+            </div>
+          )}
+          <ChatPanel
+            className="min-h-0 flex-1 border-slate-500/20 bg-[#090e17]/95 shadow-[0_25px_80px_rgba(0,0,0,.55)]"
+            messages={visibleMessages}
+            channel={chatChannel}
+            disabled={!chatEnabled || connectionState !== "connected"}
+            onSend={(message) => sendChat(chatChannel, message)}
+          />
+        </div>
+      )}
+
+      {deathEffectVisible && (
+        <DeathEffect cause={privateState.deathCause} />
+      )}
 
       {game.phase === "FINISHED" && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-ink/90 p-5 backdrop-blur-xl">
@@ -408,7 +475,30 @@ export function GamePage() {
           </div>
         </div>
       )}
+      </div>
     </PageShell>
+  );
+}
+
+function DeathEffect({ cause }: { cause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | null }) {
+  const vampireAttack = cause === "VAMPIRE";
+
+  return (
+    <div className="death-overlay fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/75 p-6" role="alert" aria-live="assertive">
+      <div className="blood-cloud blood-cloud-one" />
+      <div className="blood-cloud blood-cloud-two" />
+      <div className="death-slash" aria-hidden="true" />
+      <div className="death-message relative z-10 text-center">
+        <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
+          {vampireAttack ? <Swords size={46} /> : <Skull size={46} />}
+        </span>
+        <p className="mt-6 text-xs font-black uppercase tracking-[.38em] text-rose-300">ELENDİN</p>
+        <h2 className="mt-3 font-display text-4xl font-semibold text-white sm:text-6xl">
+          {vampireAttack ? "Vampirler seni katletti." : cause === "VOTE" ? "Kasaba kararını verdi." : "Gecen burada sona erdi."}
+        </h2>
+        <p className="mt-3 text-sm text-rose-100/65">Artık ölüler meclisindesin.</p>
+      </div>
+    </div>
   );
 }
 
@@ -427,19 +517,19 @@ function VoteResultPanel({
   const skipTally = tallyByTarget.get(SKIP_VOTE_ID);
 
   return (
-    <section className="panel overflow-hidden">
+    <section className="game-board-panel overflow-hidden rounded-3xl border">
       <div className="border-b border-amber-300/10 bg-amber-300/[.035] p-5 sm:p-6">
         <p className="eyebrow">OYLAMA SONUCU</p>
         <h2 className="mt-2 text-xl font-semibold">Kasabanın oyları</h2>
         <p className="mt-1 text-sm text-mist">Her oyuncunun aldığı toplam oy aşağıda gösteriliyor.</p>
       </div>
-      <div className="grid gap-2 p-5 sm:grid-cols-2 sm:p-6">
+      <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
         {players.map((player) => {
           const result = tallyByTarget.get(player.id);
           const voterIds = result?.voterIds ?? [];
           const count = result?.count ?? 0;
           return (
-            <div key={player.id} className={`rounded-2xl border p-3 ${player.isAlive ? "border-white/[.07] bg-white/[.025]" : "border-rose-400/15 bg-rose-950/20"}`}>
+            <div key={player.id} className={`min-h-32 rounded-2xl border p-4 ${player.isAlive ? "border-slate-400/10 bg-slate-300/[.035]" : "border-rose-400/20 bg-rose-950/30"}`}>
               <div className="flex items-center gap-3">
                 <span className={`avatar h-9 w-9 shrink-0 text-[10px] font-bold ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
                   {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}
@@ -470,7 +560,7 @@ function VoteResultPanel({
             </div>
           );
         })}
-        <div className="rounded-2xl border border-white/[.08] bg-white/[.025] p-3 sm:col-span-2">
+        <div className="rounded-2xl border border-white/[.08] bg-white/[.025] p-4 sm:col-span-2 xl:col-span-4">
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.05] text-mist"><SkipForward size={17} /></span>
             <span className="min-w-0 flex-1">
@@ -519,7 +609,7 @@ function PlayerBoard({
           : "Oyuncuları takip et ve tartışma sırasında davranışlarını karşılaştır.";
 
   return (
-    <section className="panel overflow-hidden">
+    <section className="game-board-panel overflow-hidden rounded-3xl border">
       <div className="flex flex-col gap-3 border-b border-white/[.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="eyebrow">KASABA</p>
@@ -527,21 +617,21 @@ function PlayerBoard({
         </div>
         <p className="max-w-md text-xs leading-5 text-mist sm:text-right">{phaseMessage}</p>
       </div>
-      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {players.map((player) => {
           const revealedRole = revealedRoleByPlayer.get(player.id);
           return (
             <article
               key={player.id}
-              className={`relative min-h-40 overflow-hidden rounded-2xl border p-4 ${
+              className={`player-card relative min-h-52 overflow-hidden rounded-2xl border p-5 ${
                 player.isAlive
-                  ? "border-white/[.08] bg-white/[.03]"
-                  : "border-rose-400/20 bg-rose-950/30 text-mist"
+                  ? "border-slate-400/15 bg-slate-300/[.04]"
+                  : "border-rose-400/25 bg-rose-950/35 text-mist"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className={`avatar h-16 w-16 text-sm font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
-                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={27} />}
+                <div className={`avatar h-20 w-20 rounded-2xl text-base font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : "border-slate-300/15 bg-slate-300/[.06] text-slate-100"}`}>
+                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={32} />}
                 </div>
                 <div className="flex items-center gap-2">
                   {player.id === ownerPlayerId && <Crown size={15} className="text-amber-300" />}
@@ -550,8 +640,8 @@ function PlayerBoard({
                     : <span className="rounded-full border border-rose-400/25 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300">Öldü</span>}
                 </div>
               </div>
-              <h3 className={`mt-5 truncate text-base font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</h3>
-              <div className="mt-2 flex min-h-5 flex-wrap items-center gap-2">
+              <h3 className={`mt-7 truncate text-xl font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</h3>
+              <div className="mt-3 flex min-h-6 flex-wrap items-center gap-2">
                 {player.id === currentPlayerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
                 {player.connected === false && <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200">Bağlantı koptu</span>}
                 {revealedRole && (

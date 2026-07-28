@@ -6,6 +6,7 @@ interface Props {
   messages: ChatMessage[];
   channel: ChatMessage["type"];
   disabled?: boolean;
+  className?: string;
   onSend: (message: string) => Promise<void>;
 }
 
@@ -17,7 +18,7 @@ const channelNames: Record<ChatMessage["type"], string> = {
   SYSTEM: "Sistem"
 };
 
-export function ChatPanel({ messages, channel, disabled, onSend }: Props) {
+export function ChatPanel({ messages, channel, disabled, className = "", onSend }: Props) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -43,7 +44,7 @@ export function ChatPanel({ messages, channel, disabled, onSend }: Props) {
   };
 
   return (
-    <section className="panel flex min-h-[420px] flex-col overflow-hidden">
+    <section className={`panel flex min-h-[420px] flex-col overflow-hidden ${className}`}>
       <div className="flex items-center justify-between border-b border-white/[.06] px-5 py-4">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className={channel === "VAMPIRE" ? "text-rose-300" : "text-moon"} />
