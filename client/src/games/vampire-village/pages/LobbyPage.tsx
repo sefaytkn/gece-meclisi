@@ -5,6 +5,7 @@ import { ChatPanel } from "../../../components/ChatPanel";
 import { PageShell } from "../../../components/PageShell";
 import { PlayerList } from "../../../components/PlayerList";
 import { RoleSettings } from "../../../components/RoleSettings";
+import { VillageAtmosphere } from "../../../components/VillageAtmosphere";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
@@ -29,6 +30,10 @@ export function LobbyPage() {
   useEffect(() => {
     if (room?.status === "PLAYING") navigate(`/rooms/${room.code}/game`, { replace: true });
   }, [room?.code, room?.status, navigate]);
+
+  useEffect(() => {
+    if (room?.status === "WAITING") sessionStorage.removeItem(`gece:village-night:${room.code}`);
+  }, [room?.code, room?.status]);
 
   const run = async (action: () => Promise<unknown>) => {
     if (busyRef.current || connectionState !== "connected") return;
@@ -73,7 +78,8 @@ export function LobbyPage() {
   if (!room) {
     return (
       <PageShell>
-        <div className="grid min-h-[60vh] place-items-center">
+        <VillageAtmosphere mode="DAY" />
+        <div className="relative z-10 grid min-h-[60vh] place-items-center">
           <div className="text-center">
             {error ? (
               <>
@@ -94,6 +100,8 @@ export function LobbyPage() {
 
   return (
     <PageShell>
+      <VillageAtmosphere mode="DAY" />
+      <div className="relative z-10">
       <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -281,6 +289,7 @@ export function LobbyPage() {
         </div>
 
         <ChatPanel messages={messages} channel="LOBBY" disabled={connectionState !== "connected"} onSend={(message) => sendChat("LOBBY", message)} />
+      </div>
       </div>
     </PageShell>
   );

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
 import { PageShell } from "../../../components/PageShell";
+import { VillageAtmosphere, type VillageAtmosphereMode } from "../../../components/VillageAtmosphere";
 import { useCountdown } from "../../../hooks/useCountdown";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
 import { configureGameAudio, playGameSound, unlockGameAudio } from "../../../services/gameAudio";
@@ -36,6 +37,7 @@ const SKIP_VOTE_ID = "__SKIP__";
 
 export function GamePage() {
   const { code = "" } = useParams();
+  const villageNightKey = `gece:village-night:${code}`;
   const navigate = useNavigate();
   const { room, game, privateState, messages, error, session, sendChat, connectionState } = useRoomSocket(code);
   const [selected, setSelected] = useState("");
@@ -50,10 +52,14 @@ export function GamePage() {
     return Number.isFinite(storedVolume) && storedVolume >= 0 && storedVolume <= 100 ? storedVolume : 18;
   });
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
+  const [atmosphereMode, setAtmosphereMode] = useState<VillageAtmosphereMode>(() =>
+    sessionStorage.getItem(villageNightKey) === "active" ? "NIGHT" : "TRANSITION"
+  );
   const wasAliveRef = useRef<boolean | null>(null);
   const previousPhaseRef = useRef<GameState["phase"] | null>(null);
   const playedClockBellRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
+  const gameReady = Boolean(game);
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
     ? "DEAD"
@@ -93,6 +99,15 @@ export function GamePage() {
   useEffect(() => {
     configureGameAudio(soundEnabled, soundVolume / 100);
   }, [soundEnabled, soundVolume]);
+
+  useEffect(() => {
+    if (!gameReady || atmosphereMode !== "TRANSITION") return;
+    const timeout = window.setTimeout(() => {
+      sessionStorage.setItem(villageNightKey, "active");
+      setAtmosphereMode("NIGHT");
+    }, 3200);
+    return () => window.clearTimeout(timeout);
+  }, [atmosphereMode, gameReady, villageNightKey]);
 
   useEffect(() => {
     if (!game) return;
@@ -227,7 +242,8 @@ export function GamePage() {
 
   return (
     <PageShell full>
-      <div className="game-stage mx-auto min-h-[calc(100vh-5rem)] w-full max-w-[1760px] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+      <VillageAtmosphere mode={atmosphereMode} />
+      <div className="game-stage village-game-stage relative z-10 mx-auto min-h-[calc(100vh-5rem)] w-full max-w-[1760px] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
       <Moon className="game-watermark game-watermark-moon" aria-hidden="true" />
       <Swords className="game-watermark game-watermark-swords" aria-hidden="true" />
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

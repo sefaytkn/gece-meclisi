@@ -194,6 +194,277 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.12) transparent; }
 
+.village-atmosphere {
+  position: fixed;
+  inset: 5rem 0 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0a1018;
+}
+
+.village-sky,
+.village-readable-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.village-sky-day {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 248, 205, .45), transparent 24rem),
+    linear-gradient(to bottom, #70a8c4 0%, #a7c7ca 45%, #d5c6a1 76%, #6f7655 100%);
+}
+
+.village-sky-night {
+  z-index: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(175, 194, 225, .17), transparent 25rem),
+    radial-gradient(circle at 20% 64%, rgba(29, 55, 95, .24), transparent 34rem),
+    linear-gradient(to bottom, #07101f 0%, #0d1b2f 48%, #101625 74%, #090b11 100%);
+}
+
+.village-sun,
+.village-moon {
+  position: absolute;
+  z-index: 1;
+  right: 10%;
+  top: 10%;
+  width: min(16vw, 12rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.village-sun {
+  background: #ffe69a;
+  box-shadow: 0 0 45px rgba(255, 224, 128, .72), 0 0 110px rgba(255, 214, 105, .38);
+}
+
+.village-moon {
+  opacity: 0;
+  transform: translateY(55%);
+  overflow: hidden;
+  background: radial-gradient(circle at 38% 34%, #f3f2e8, #c7cfda 57%, #717c91 100%);
+  box-shadow: 0 0 55px rgba(186, 206, 236, .38), 0 0 130px rgba(140, 169, 215, .18), inset -20px -14px 32px rgba(18, 29, 48, .42);
+}
+
+.village-moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(80, 94, 116, .22);
+  box-shadow: inset 4px 4px 8px rgba(39, 49, 66, .16);
+}
+
+.village-moon-crater-one { left: 24%; top: 30%; width: 17%; height: 17%; }
+.village-moon-crater-two { right: 20%; bottom: 25%; width: 25%; height: 25%; }
+
+.village-cloud {
+  position: absolute;
+  z-index: 2;
+  width: 30rem;
+  height: 5rem;
+  border-radius: 50%;
+  opacity: .25;
+  filter: blur(22px);
+  background: rgba(238, 241, 228, .8);
+  animation: village-cloud-drift 24s ease-in-out infinite alternate;
+}
+
+.village-cloud-one { left: -8rem; top: 22%; }
+.village-cloud-two { right: -12rem; top: 39%; animation-delay: -11s; }
+
+.village-houses {
+  position: absolute;
+  z-index: 3;
+  inset: auto -3% -1px;
+  height: 48%;
+  filter: drop-shadow(0 -14px 24px rgba(24, 19, 15, .18));
+}
+
+.village-houses svg { width: 100%; height: 100%; overflow: visible; }
+.village-ground-back { fill: #6c7550; }
+.village-buildings { fill: #8d694c; stroke: #5b4436; stroke-width: 3; }
+.village-windows { fill: #f4ca6c; filter: drop-shadow(0 0 5px rgba(244, 202, 108, .35)); }
+.village-ground-front { fill: #3f4b35; }
+
+.village-day-trees,
+.village-night-trees {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+}
+
+.village-day-tree {
+  position: absolute;
+  bottom: 15%;
+  width: 8.5rem;
+  height: 17rem;
+  transform-origin: 50% 100%;
+}
+
+.village-day-tree-one { left: 3%; scale: 1.12; }
+.village-day-tree-two { left: 68%; scale: .8; }
+.village-day-tree-three { right: 2%; scale: 1.25; }
+
+.village-day-tree-trunk {
+  position: absolute;
+  left: 46%;
+  bottom: 0;
+  width: 13%;
+  height: 57%;
+  border-radius: 70% 40% 8% 8%;
+  background: linear-gradient(90deg, #4a3020, #745036 48%, #3a281d);
+}
+
+.village-day-tree-crown {
+  position: absolute;
+  border-radius: 47% 53% 42% 58%;
+  background: radial-gradient(circle at 35% 30%, #5f8747, #294f35 72%);
+  box-shadow: inset -12px -10px 20px rgba(15, 42, 25, .24);
+}
+
+.village-day-tree-crown-one { left: 4%; top: 13%; width: 67%; height: 44%; }
+.village-day-tree-crown-two { right: 2%; top: 17%; width: 66%; height: 42%; }
+.village-day-tree-crown-three { left: 23%; top: 0; width: 64%; height: 43%; }
+
+.village-night-trees { opacity: 0; }
+
+.village-night-tree {
+  position: absolute;
+  bottom: 6%;
+  width: 15rem;
+  height: 25rem;
+  overflow: visible;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, .55));
+  animation: village-tree-sway 7s ease-in-out infinite alternate;
+}
+
+.village-night-tree path {
+  fill: none;
+  stroke: #08090c;
+  stroke-width: 13;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.village-night-tree-one { left: -3.5rem; scale: 1.18; }
+.village-night-tree-two { left: 62%; scale: .72; animation-delay: -2.4s; }
+.village-night-tree-three { right: -4rem; scale: 1.35; animation-delay: -4.2s; }
+
+.village-night-fog {
+  position: absolute;
+  z-index: 5;
+  width: 78rem;
+  height: 9rem;
+  border-radius: 50%;
+  opacity: 0;
+  filter: blur(30px);
+  background: linear-gradient(90deg, transparent, rgba(174, 190, 205, .42), transparent);
+  animation: village-fog-drift 18s ease-in-out infinite alternate;
+}
+
+.village-night-fog-one { left: -20rem; bottom: 16%; }
+.village-night-fog-two { right: -25rem; bottom: 5%; animation-delay: -8s; }
+
+.village-readable-shade {
+  z-index: 6;
+  background:
+    linear-gradient(90deg, rgba(5, 8, 11, .43), rgba(5, 8, 11, .2) 48%, rgba(5, 8, 11, .35)),
+    linear-gradient(to bottom, rgba(5, 8, 11, .06), rgba(5, 8, 11, .52));
+}
+
+.village-atmosphere--night .village-sky-day { opacity: 0; }
+.village-atmosphere--night .village-sky-night { opacity: 1; }
+.village-atmosphere--night .village-sun { opacity: 0; transform: translateY(70vh); }
+.village-atmosphere--night .village-moon { opacity: .94; transform: translateY(0); }
+.village-atmosphere--night .village-cloud { opacity: .06; background: #8091a9; }
+.village-atmosphere--night .village-day-trees { opacity: 0; }
+.village-atmosphere--night .village-night-trees { opacity: 1; }
+.village-atmosphere--night .village-night-fog { opacity: .24; }
+.village-atmosphere--night .village-ground-back { fill: #182130; }
+.village-atmosphere--night .village-buildings { fill: #171923; stroke: #080a0f; }
+.village-atmosphere--night .village-windows { fill: #bd9757; opacity: .62; }
+.village-atmosphere--night .village-ground-front { fill: #090d13; }
+.village-atmosphere--night .village-readable-shade {
+  background:
+    linear-gradient(90deg, rgba(3, 7, 13, .68), rgba(3, 7, 13, .36) 52%, rgba(3, 7, 13, .55)),
+    linear-gradient(to bottom, rgba(3, 7, 13, .08), rgba(3, 7, 13, .68));
+}
+
+.village-atmosphere--transition .village-sky-day { animation: village-day-fade 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-sky-night { animation: village-night-rise 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-sun { animation: village-sun-set 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-moon { animation: village-moon-rise 3.2s ease-out forwards; }
+.village-atmosphere--transition .village-cloud { animation: village-cloud-darken 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-day-trees { animation: village-day-fade 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-night-trees { animation: village-night-rise 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-night-fog { animation: village-fog-appear 3.2s ease-in-out forwards, village-fog-drift 18s ease-in-out 3.2s infinite alternate; }
+.village-atmosphere--transition .village-houses { animation: village-darken 3.2s ease-in-out forwards; }
+.village-atmosphere--transition .village-readable-shade { animation: village-shade-darken 3.2s ease-in-out forwards; }
+
+.village-game-stage::before,
+.village-game-stage::after {
+  display: none;
+}
+
+@keyframes village-day-fade {
+  0%, 22% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes village-night-rise {
+  0%, 18% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes village-sun-set {
+  0%, 12% { opacity: 1; transform: translateY(0); }
+  75% { opacity: .72; }
+  100% { opacity: 0; transform: translateY(72vh); }
+}
+
+@keyframes village-moon-rise {
+  0%, 24% { opacity: 0; transform: translateY(58%); }
+  100% { opacity: .94; transform: translateY(0); }
+}
+
+@keyframes village-cloud-darken {
+  from { opacity: .25; background: rgba(238, 241, 228, .8); }
+  to { opacity: .06; background: #8091a9; }
+}
+
+@keyframes village-fog-appear {
+  from { opacity: 0; }
+  to { opacity: .24; }
+}
+
+@keyframes village-darken {
+  from { filter: brightness(1); }
+  to { filter: brightness(.25) saturate(.55) hue-rotate(172deg); }
+}
+
+@keyframes village-shade-darken {
+  from { opacity: .75; }
+  to { opacity: 1; }
+}
+
+@keyframes village-cloud-drift {
+  from { translate: -5% 0; }
+  to { translate: 8% 7%; }
+}
+
+@keyframes village-fog-drift {
+  from { translate: -4% 0; scale: .96; }
+  to { translate: 6% -8%; scale: 1.05; }
+}
+
+@keyframes village-tree-sway {
+  from { rotate: -1.4deg; }
+  to { rotate: 1.6deg; }
+}
+
 .game-stage {
   isolation: isolate;
 }
@@ -336,12 +607,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   }
   .home-moon { right: -7rem; top: 9%; width: min(58vw, 27rem); opacity: .48; }
   .home-village { right: -22%; width: 125%; height: 34%; opacity: .58; }
+  .village-sun,
+  .village-moon { right: 8%; width: 9.5rem; }
+  .village-houses { right: -22%; left: -18%; height: 42%; }
+  .village-day-tree-two,
+  .village-night-tree-two { display: none; }
 }
 
 @media (max-width: 639px) {
   .home-moon { right: -5rem; top: 8%; width: 18rem; opacity: .34; }
   .home-village { right: -56%; width: 190%; height: 28%; opacity: .46; }
   .home-fog { opacity: .08; }
+  .village-atmosphere { top: 4.5rem; }
+  .village-sun,
+  .village-moon { right: 6%; top: 8%; width: 7.5rem; }
+  .village-houses { right: -72%; left: -50%; height: 34%; opacity: .82; }
+  .village-day-tree { bottom: 10%; scale: .76; }
+  .village-day-tree-one { left: -2rem; }
+  .village-day-tree-three { right: -2.8rem; }
+  .village-night-tree { bottom: 2%; scale: .72; }
+  .village-night-tree-one { left: -5rem; }
+  .village-night-tree-three { right: -5rem; }
+  .village-night-fog { opacity: .14; }
 }
 
 @media (prefers-reduced-motion: reduce) {
