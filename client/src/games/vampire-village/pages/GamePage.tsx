@@ -1,11 +1,11 @@
-import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
+import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, SlidersHorizontal, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
 import { PageShell } from "../../../components/PageShell";
 import { useCountdown } from "../../../hooks/useCountdown";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
-import { playDeathSound, unlockGameAudio } from "../../../services/gameAudio";
+import { configureGameAudio, playGameSound, unlockGameAudio } from "../../../services/gameAudio";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { ChatMessage, GamePlayer, GameState, Role } from "../../../types";
@@ -45,7 +45,14 @@ export function GamePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [deathEffectVisible, setDeathEffectVisible] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
+  const [soundVolume, setSoundVolume] = useState(() => {
+    const storedVolume = Number(localStorage.getItem("gece:sound-volume"));
+    return Number.isFinite(storedVolume) && storedVolume >= 0 && storedVolume <= 100 ? storedVolume : 18;
+  });
+  const [soundPanelOpen, setSoundPanelOpen] = useState(false);
   const wasAliveRef = useRef<boolean | null>(null);
+  const previousPhaseRef = useRef<GameState["phase"] | null>(null);
+  const playedClockBellRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
@@ -84,6 +91,46 @@ export function GamePage() {
   }, []);
 
   useEffect(() => {
+    configureGameAudio(soundEnabled, soundVolume / 100);
+  }, [soundEnabled, soundVolume]);
+
+  useEffect(() => {
+    if (!game) return;
+    if (previousPhaseRef.current === null) {
+      previousPhaseRef.current = game.phase;
+      return;
+    }
+    if (previousPhaseRef.current === game.phase) return;
+    previousPhaseRef.current = game.phase;
+
+    let creatureTimeout: number | undefined;
+    if (game.phase === "NIGHT") {
+      playGameSound("NIGHT_START");
+      creatureTimeout = window.setTimeout(() => playGameSound("NIGHT_CREATURE"), 1700);
+    } else if (game.phase === "DAY_DISCUSSION") {
+      playGameSound("DAY_START");
+    } else if (game.phase === "DAY_VOTING") {
+      playGameSound("VOTING_START");
+    } else if (game.phase === "ROUND_RESULT") {
+      playGameSound("VOTING_END");
+    } else if (game.phase === "FINISHED") {
+      playGameSound(game.winner === "VILLAGE" ? "VILLAGE_VICTORY" : "VAMPIRE_VICTORY");
+    }
+
+    return () => {
+      if (creatureTimeout) window.clearTimeout(creatureTimeout);
+    };
+  }, [game?.phase, game?.winner]);
+
+  useEffect(() => {
+    if (!game?.phaseEndsAt || seconds !== 10) return;
+    const bellKey = `${game.round}:${game.phase}:${game.phaseEndsAt}`;
+    if (playedClockBellRef.current === bellKey) return;
+    playedClockBellRef.current = bellKey;
+    playGameSound("CLOCK_BELL");
+  }, [game?.phase, game?.phaseEndsAt, game?.round, seconds]);
+
+  useEffect(() => {
     if (!privateState) return;
     if (wasAliveRef.current === null) {
       wasAliveRef.current = privateState.isAlive;
@@ -95,16 +142,14 @@ export function GamePage() {
     if (!wasEliminated) return;
 
     setDeathEffectVisible(true);
-    if (soundEnabled) {
-      try {
-        playDeathSound();
-      } catch {
-        // The visual effect still works when the browser blocks audio playback.
-      }
+    try {
+      playGameSound("PLAYER_ELIMINATED");
+    } catch {
+      // The visual effect still works when the browser blocks audio playback.
     }
     const timeout = window.setTimeout(() => setDeathEffectVisible(false), 2200);
     return () => window.clearTimeout(timeout);
-  }, [privateState?.isAlive, soundEnabled]);
+  }, [privateState?.isAlive]);
 
   const toggleSound = () => {
     setSoundEnabled((enabled) => {
@@ -112,6 +157,11 @@ export function GamePage() {
       localStorage.setItem("gece:sound-enabled", String(next));
       return next;
     });
+  };
+
+  const updateSoundVolume = (volume: number) => {
+    setSoundVolume(volume);
+    localStorage.setItem("gece:sound-volume", String(volume));
   };
 
   const submitAction = async () => {
@@ -409,6 +459,14 @@ export function GamePage() {
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
+            <button
+              className={`btn-icon ${soundPanelOpen ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : ""}`}
+              onClick={() => setSoundPanelOpen((open) => !open)}
+              aria-label={soundPanelOpen ? "Ses ayarlarını kapat" : "Ses ayarlarını aç"}
+              title="Ses seviyesi"
+            >
+              {soundPanelOpen ? <X size={18} /> : <SlidersHorizontal size={18} />}
+            </button>
             <div className="hidden h-px bg-white/[.06] xl:block" />
             <span className="btn-icon pointer-events-none" title={`${game.players.filter((player) => player.isAlive).length} kişi hayatta`}>
               <UsersRound size={18} />
@@ -416,6 +474,38 @@ export function GamePage() {
           </nav>
         </aside>
       </div>
+
+      {soundPanelOpen && (
+        <section className="fixed right-4 top-24 z-[55] w-[min(19rem,calc(100vw-2rem))] rounded-2xl border border-slate-500/20 bg-[#090e17]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.55)] backdrop-blur-xl sm:right-20" aria-label="Ses ayarları">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-white">Atmosfer sesleri</p>
+              <p className="mt-1 text-[11px] leading-4 text-mist">Sesli sohbet yok; yalnızca oyun efektleri.</p>
+            </div>
+            <button className={`btn-icon shrink-0 ${soundEnabled ? "text-amber-200" : ""}`} onClick={toggleSound} aria-label={soundEnabled ? "Sesi kapat" : "Sesi aç"}>
+              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+          </div>
+          <label className="mt-5 block" htmlFor="game-sound-volume">
+            <span className="flex items-center justify-between text-xs font-semibold text-moon/80">
+              <span>Ses seviyesi</span>
+              <span className="tabular-nums text-amber-200">%{soundVolume}</span>
+            </span>
+            <input
+              id="game-sound-volume"
+              className="mt-3 h-2 w-full cursor-pointer accent-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={soundVolume}
+              disabled={!soundEnabled}
+              onChange={(event) => updateSoundVolume(Number(event.target.value))}
+            />
+          </label>
+          <p className="mt-3 text-[10px] leading-4 text-mist">Tercihin bu cihazda otomatik olarak saklanır. Varsayılan seviye düşüktür.</p>
+        </section>
+      )}
 
       {chatOpen && (
         <div className="fixed inset-x-4 bottom-4 top-24 z-50 ml-auto flex max-w-[25rem] flex-col sm:right-6 sm:left-auto sm:w-[25rem]">
