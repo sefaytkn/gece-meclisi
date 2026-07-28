@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CircleX, Clock3, Crown, HeartPulse, LoaderCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Target, Vote } from "lucide-react";
+import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, Sparkles, Sun, Target, UsersRound, Vote, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
@@ -7,7 +7,7 @@ import { useCountdown } from "../../../hooks/useCountdown";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
-import type { ChatMessage, GamePlayer, Role } from "../../../types";
+import type { ChatMessage, GamePlayer, GameState, Role } from "../../../types";
 
 const phaseNames = {
   WAITING: "Bekleniyor",
@@ -40,6 +40,8 @@ export function GamePage() {
   const [selected, setSelected] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionPending, setActionPending] = useState(false);
+  const [roleVisible, setRoleVisible] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
@@ -60,7 +62,12 @@ export function GamePage() {
     setSelected("");
     setActionError("");
     setActionPending(false);
+    setRoleVisible(false);
   }, [game?.phase, game?.round]);
+
+  useEffect(() => {
+    if (privateState && !privateState.isAlive) setChatOpen(true);
+  }, [privateState?.isAlive]);
 
   const submitAction = async () => {
     if (!selected || !game) return;
@@ -111,13 +118,7 @@ export function GamePage() {
       : false;
   const phaseExpired = Boolean(game.phaseEndsAt) && seconds === 0;
   const actionLocked = actionPending || actionAlreadySubmitted || phaseExpired || connectionState !== "connected";
-  const targets = game.players.filter((player) =>
-    player.isAlive &&
-    !(canActAtNight && privateState.role === "VAMPIRE" && player.id === session?.playerId) &&
-    !(canVote && !room.settings.canSelfVote && player.id === session?.playerId) &&
-    !(canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId)
-  );
-  const actionCandidates = canVote ? game.players : targets;
+  const actionCandidates = game.players;
   const revealedRoleByPlayer = new Map(privateState.revealedRoles.map((item) => [item.playerId, item.role]));
   const playerNameById = new Map(game.players.map((player) => [player.id, player.nickname]));
   const votersByTarget = new Map<string, string[]>();
@@ -185,41 +186,34 @@ export function GamePage() {
         </section>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[.72fr_1.35fr_.9fr]">
-        <div className="space-y-5">
-          <section className={`rounded-3xl border p-5 shadow-panel ${myTheme.className}`}>
-            <div className="flex items-start justify-between">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-black/20"><RoleIcon size={21} /></span>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-70">GİZLİ ROLÜN</span>
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <main className="min-w-0 space-y-5">
+          <section className={`panel flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between ${roleVisible ? myTheme.className : ""}`}>
+            <div className="flex min-w-0 items-center gap-3">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${roleVisible ? "bg-black/20" : "bg-white/[.05] text-mist"}`}>
+                {roleVisible ? <RoleIcon size={19} /> : <EyeOff size={18} />}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[.2em] opacity-60">GİZLİ ROLÜN</p>
+                {roleVisible ? (
+                  <>
+                    <p className="mt-1 truncate text-sm font-bold">{privateState.roleInfo.name}</p>
+                    <p className="mt-0.5 truncate text-xs opacity-70">{privateState.roleInfo.goal}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm font-bold text-white">Rolün gizlendi</p>
+                    <p className="mt-0.5 text-xs text-mist">Yanındaki oyuncular ekranından rolünü göremez.</p>
+                  </>
+                )}
+              </div>
             </div>
-            <h2 className="mt-8 font-display text-3xl font-semibold">{privateState.roleInfo.name}</h2>
-            <p className="mt-2 text-sm leading-6 opacity-75">{privateState.roleInfo.description}</p>
-            <div className="mt-5 border-t border-current/10 pt-4">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">AMACIN</p>
-              <p className="mt-1 text-xs leading-5 opacity-80">{privateState.roleInfo.goal}</p>
-            </div>
+            <button className="btn-secondary shrink-0 justify-center px-4 text-xs" onClick={() => setRoleVisible((visible) => !visible)}>
+              {roleVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+              {roleVisible ? "Rolü gizle" : "Rolü göster"}
+            </button>
           </section>
 
-          <section className="panel overflow-hidden">
-            <div className="border-b border-white/[.06] px-5 py-4">
-              <p className="eyebrow">KASABA</p>
-              <h2 className="mt-1 text-sm font-semibold">{game.players.filter((player) => player.isAlive).length} kişi hayatta</h2>
-            </div>
-            <div className="divide-y divide-white/[.05]">
-              {game.players.map((player) => (
-                <GamePlayerRow
-                  key={player.id}
-                  player={player}
-                  isMe={player.id === session?.playerId}
-                  owner={player.id === room.ownerPlayerId}
-                  revealedRole={revealedRoleByPlayer.get(player.id)}
-                />
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-5">
           {showVoteResult ? (
             <VoteResultPanel
               players={game.players}
@@ -247,30 +241,40 @@ export function GamePage() {
                 </div>
               </div>
               <div className="p-5 sm:p-6">
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {actionCandidates.map((player) => {
                     const unavailable =
                       !player.isAlive ||
-                      (canVote && !room.settings.canSelfVote && player.id === session?.playerId);
+                      (canVote && !room.settings.canSelfVote && player.id === session?.playerId) ||
+                      (canActAtNight && privateState.role === "VAMPIRE" && player.id === session?.playerId) ||
+                      (canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId);
                     const voterIds = votersByTarget.get(player.id) ?? [];
                     return (
                     <button
                       key={player.id}
                       disabled={actionLocked || unavailable}
                       onClick={() => setSelected(player.id)}
-                      className={`relative flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                      className={`relative min-h-32 overflow-hidden rounded-2xl border p-4 text-left transition ${
                         !player.isAlive
-                          ? "border-rose-400/10 bg-rose-950/20 opacity-55"
+                          ? "border-rose-400/15 bg-rose-950/25 opacity-55"
                           : selected === player.id
                             ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]"
                             : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"
                       }`}
                     >
-                      <span className={`avatar h-9 w-9 shrink-0 text-[10px] font-bold ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
-                        {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}
+                      <span className="flex items-start gap-3">
+                        <span className={`avatar h-12 w-12 shrink-0 text-xs font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
+                          {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={23} />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block truncate text-sm font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {player.id === session?.playerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
+                            {player.id === room.ownerPlayerId && <Crown size={12} className="text-amber-300" />}
+                          </span>
+                        </span>
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                      <span className="mt-4 block min-h-6">
                         {!player.isAlive && <span className="mt-0.5 block text-[9px] font-black uppercase tracking-wider text-rose-300">Öldü</span>}
                         {canVote && room.settings.voteVisibility === "PUBLIC" && voterIds.length > 0 && (
                           <span className="mt-2 flex flex-wrap gap-1">
@@ -283,9 +287,10 @@ export function GamePage() {
                         )}
                       </span>
                       {canVote && room.settings.voteVisibility === "PUBLIC" && voterIds.length > 0 && (
-                        <span className="rounded-full bg-white/[.06] px-2 py-1 text-[10px] font-bold">{voterIds.length}</span>
+                        <span className="absolute right-3 top-3 rounded-full bg-white/[.08] px-2 py-1 text-[10px] font-bold">{voterIds.length}</span>
                       )}
-                      {selected === player.id && <Check size={16} className="text-rose-300" />}
+                      {selected === player.id && <span className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-rose-500 text-white"><Check size={16} /></span>}
+                      {!player.isAlive && <DeadCross />}
                     </button>
                     );
                   })}
@@ -317,30 +322,53 @@ export function GamePage() {
               </div>
             </section>
           ) : (
-            <section className="panel grid min-h-64 place-items-center p-8 text-center">
-              <div>
-                {game.phase === "NIGHT" ? <Moon className="mx-auto text-indigo-300" size={28} /> : <Sun className="mx-auto text-amber-300" size={28} />}
-                <h2 className="mt-4 text-lg font-semibold">
-                  {!privateState.isAlive ? "Artık gölgeler arasındasın." : game.phase === "NIGHT" ? "Kasaba uyuyor." : "Söz sırası kasabada."}
-                </h2>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-mist">
-                  {!privateState.isAlive ? "Yaşayanların kararlarına müdahale edemezsin; ölüler sohbetinde konuşabilirsin." : game.phase === "NIGHT" && privateState.role === "VILLAGER" ? "Köylünün gece eylemi yok. Güneşin doğmasını bekle." : "Tartışmayı dikkatle takip et. Oylama birazdan başlayacak."}
-                </p>
-              </div>
-            </section>
+            <PlayerBoard
+              players={game.players}
+              currentPlayerId={session?.playerId}
+              ownerPlayerId={room.ownerPlayerId}
+              revealedRoleByPlayer={revealedRoleByPlayer}
+              phase={game.phase}
+              isAlive={privateState.isAlive}
+              role={privateState.role}
+            />
           )}
+        </main>
 
-          {game.phase === "ROLE_REVEAL" && (
-            <section className={`rounded-3xl border p-6 text-center ${myTheme.className}`}>
-              <RoleIcon className="mx-auto" size={32} />
-              <p className="eyebrow mt-5">BU KART YALNIZCA SANA AİT</p>
-              <h2 className="mt-2 font-display text-4xl font-semibold">{privateState.roleInfo.name}</h2>
-              <p className="mt-3 text-sm leading-6 opacity-80">{privateState.roleInfo.ability}</p>
-            </section>
+        <aside className={`grid items-start gap-3 xl:sticky xl:top-24 ${chatOpen ? "xl:grid-cols-[3.25rem_21rem]" : "xl:grid-cols-[3.25rem]"}`}>
+          <nav className="panel flex gap-2 p-2 xl:flex-col" aria-label="Oyun araçları">
+            <button
+              className={`btn-icon relative ${chatOpen ? "border-rose-400/30 bg-rose-500/10 text-rose-200" : ""}`}
+              onClick={() => setChatOpen((open) => !open)}
+              aria-label={chatOpen ? "Sohbeti kapat" : "Sohbeti aç"}
+              title={privateState.isAlive ? "Sohbet" : "Ölüler sohbeti"}
+            >
+              {chatOpen ? <X size={18} /> : <MessageCircle size={18} />}
+              {!chatOpen && visibleMessages.length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white">{Math.min(99, visibleMessages.length)}</span>}
+            </button>
+            <button
+              className={`btn-icon ${roleVisible ? "border-indigo-400/30 bg-indigo-500/10 text-indigo-200" : ""}`}
+              onClick={() => setRoleVisible((visible) => !visible)}
+              aria-label={roleVisible ? "Rolü gizle" : "Rolü göster"}
+              title={roleVisible ? "Rolü gizle" : "Rolü göster"}
+            >
+              {roleVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+            <div className="hidden h-px bg-white/[.06] xl:block" />
+            <span className="btn-icon pointer-events-none" title={`${game.players.filter((player) => player.isAlive).length} kişi hayatta`}>
+              <UsersRound size={18} />
+            </span>
+          </nav>
+          {chatOpen && (
+            <div className="min-w-0">
+              {!privateState.isAlive && (
+                <div className="mb-3 rounded-2xl border border-rose-400/15 bg-rose-500/[.06] px-4 py-3 text-xs text-rose-100">
+                  Bu sohbeti yalnızca ölen oyuncular görebilir.
+                </div>
+              )}
+              <ChatPanel messages={visibleMessages} channel={chatChannel} disabled={!chatEnabled || connectionState !== "connected"} onSend={(message) => sendChat(chatChannel, message)} />
+            </div>
           )}
-        </div>
-
-        <ChatPanel messages={visibleMessages} channel={chatChannel} disabled={!chatEnabled || connectionState !== "connected"} onSend={(message) => sendChat(chatChannel, message)} />
+        </aside>
       </div>
 
       {game.phase === "FINISHED" && (
@@ -463,26 +491,89 @@ function VoteResultPanel({
   );
 }
 
-function GamePlayerRow({ player, isMe, owner, revealedRole }: { player: GamePlayer; isMe: boolean; owner: boolean; revealedRole?: Role }) {
+function PlayerBoard({
+  players,
+  currentPlayerId,
+  ownerPlayerId,
+  revealedRoleByPlayer,
+  phase,
+  isAlive,
+  role
+}: {
+  players: GamePlayer[];
+  currentPlayerId?: string;
+  ownerPlayerId: string;
+  revealedRoleByPlayer: Map<string, Role>;
+  phase: GameState["phase"];
+  isAlive: boolean;
+  role: Role;
+}) {
+  const aliveCount = players.filter((player) => player.isAlive).length;
+  const phaseMessage =
+    !isAlive
+      ? "Yaşayanları izle; yalnızca ölüler sohbetinde konuşabilirsin."
+      : phase === "NIGHT" && role === "VILLAGER"
+        ? "Kasaba uyuyor. Güneşin doğmasını bekle."
+        : phase === "ROLE_REVEAL"
+          ? "Rolünü üstteki düğmeden güvenli şekilde görüntüleyebilirsin."
+          : "Oyuncuları takip et ve tartışma sırasında davranışlarını karşılaştır.";
+
   return (
-    <div className={`flex items-center gap-3 px-5 py-3.5 ${!player.isAlive ? "bg-rose-950/20 text-mist" : ""}`}>
-      <div className={`avatar ${!player.isAlive ? "avatar-dead border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>{player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}</div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400/70 decoration-2" : ""}`}>{player.nickname}</span>
-          {owner && <Crown size={13} className="text-amber-300" />}
-          {isMe && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
+    <section className="panel overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-white/[.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="eyebrow">KASABA</p>
+          <h2 className="mt-1 text-lg font-semibold">{aliveCount} kişi hayatta · {players.length - aliveCount} kişi öldü</h2>
         </div>
-        <p className={`mt-0.5 text-[10px] ${player.isAlive ? "text-mist" : "font-bold uppercase tracking-wider text-rose-300"}`}>{player.isAlive ? (player.connected === false ? "Bağlantısı koptu" : "Hayatta") : "Öldü · oy kullanamaz"}</p>
+        <p className="max-w-md text-xs leading-5 text-mist sm:text-right">{phaseMessage}</p>
       </div>
-      {revealedRole && (
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${revealedRole === "VAMPIRE" ? "bg-rose-500/10 text-rose-300" : revealedRole === "DOCTOR" ? "bg-emerald-500/10 text-emerald-300" : "bg-sky-500/10 text-sky-300"}`}>
-          {roleNames[revealedRole]}
-        </span>
-      )}
-      {player.isAlive
-        ? <span className="h-2 w-2 rounded-full bg-emerald-400" />
-        : <span className="rounded-full border border-rose-400/20 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300">Ölü</span>}
-    </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {players.map((player) => {
+          const revealedRole = revealedRoleByPlayer.get(player.id);
+          return (
+            <article
+              key={player.id}
+              className={`relative min-h-40 overflow-hidden rounded-2xl border p-4 ${
+                player.isAlive
+                  ? "border-white/[.08] bg-white/[.03]"
+                  : "border-rose-400/20 bg-rose-950/30 text-mist"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className={`avatar h-16 w-16 text-sm font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
+                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={27} />}
+                </div>
+                <div className="flex items-center gap-2">
+                  {player.id === ownerPlayerId && <Crown size={15} className="text-amber-300" />}
+                  {player.isAlive
+                    ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.5)]" />
+                    : <span className="rounded-full border border-rose-400/25 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300">Öldü</span>}
+                </div>
+              </div>
+              <h3 className={`mt-5 truncate text-base font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</h3>
+              <div className="mt-2 flex min-h-5 flex-wrap items-center gap-2">
+                {player.id === currentPlayerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
+                {player.connected === false && <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200">Bağlantı koptu</span>}
+                {revealedRole && (
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-bold ${revealedRole === "VAMPIRE" ? "bg-rose-500/10 text-rose-300" : revealedRole === "DOCTOR" ? "bg-emerald-500/10 text-emerald-300" : "bg-sky-500/10 text-sky-300"}`}>
+                    {roleNames[revealedRole]}
+                  </span>
+                )}
+              </div>
+              {!player.isAlive && <DeadCross />}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DeadCross() {
+  return (
+    <span className="pointer-events-none absolute inset-0" aria-hidden="true">
+      <span className="absolute left-1/2 top-1/2 h-1 w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[-35deg] rounded-full bg-rose-500/75 shadow-[0_0_12px_rgba(244,63,94,.35)]" />
+      <span className="absolute left-1/2 top-1/2 h-1 w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[35deg] rounded-full bg-rose-500/75 shadow-[0_0_12px_rgba(244,63,94,.35)]" />
+    </span>
   );
 }
