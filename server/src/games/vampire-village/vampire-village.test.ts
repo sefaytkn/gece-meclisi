@@ -183,6 +183,7 @@ describe("gece, oy ve sohbet kuralları", () => {
     publicEngine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[1]!.id });
     expect(publicEngine.getPublicState()).toMatchObject({
       votesCast: 1,
+      votedPlayerIds: [players[0]!.id],
       publicVotes: [{ voterId: players[0]!.id, targetId: players[1]!.id }]
     });
 
@@ -192,7 +193,11 @@ describe("gece, oy ve sohbet kuralları", () => {
     secretEngine.advancePhase();
     secretEngine.advancePhase();
     secretEngine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[1]!.id });
-    expect(secretEngine.getPublicState()).toMatchObject({ votesCast: 1, publicVotes: [] });
+    expect(secretEngine.getPublicState()).toMatchObject({
+      votesCast: 1,
+      votedPlayerIds: [players[0]!.id],
+      publicVotes: []
+    });
   });
 
   it("eşit oylarda NO_ELIMINATION kuralıyla kimseyi elemez", () => {

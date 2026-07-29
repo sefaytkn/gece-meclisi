@@ -57,6 +57,7 @@ export function GamePage() {
   const playedTimeWarningRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
   const gameReady = Boolean(game);
+  const desiredAtmosphereMode = game ? villageModeForGamePhase(game.phase) : "DAY";
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
     ? "DEAD"
@@ -95,8 +96,15 @@ export function GamePage() {
 
   useEffect(() => {
     if (!gameReady || !game) return;
-    setAtmosphereMode(villageModeForGamePhase(game.phase));
-  }, [game?.phase, gameReady]);
+    if (desiredAtmosphereMode === "DAY") {
+      setAtmosphereMode("DAY");
+      return;
+    }
+
+    setAtmosphereMode((current) => current === "NIGHT" ? current : "SUNSET");
+    const nightTransition = window.setTimeout(() => setAtmosphereMode("NIGHT"), 3200);
+    return () => window.clearTimeout(nightTransition);
+  }, [desiredAtmosphereMode, gameReady]);
 
   useEffect(() => {
     if (!game) return;
@@ -148,13 +156,19 @@ export function GamePage() {
 
     setDeathEffectVisible(true);
     try {
-      playGameSound("PLAYER_ELIMINATED");
+      playGameSound(
+        privateState.deathCause === "VAMPIRE"
+          ? "VAMPIRE_ATTACK"
+          : privateState.deathCause === "VOTE"
+            ? "VOTE_EXECUTION"
+            : "PLAYER_ELIMINATED"
+      );
     } catch {
       // The visual effect still works when the browser blocks audio playback.
     }
     const timeout = window.setTimeout(() => setDeathEffectVisible(false), 2200);
     return () => window.clearTimeout(timeout);
-  }, [privateState?.isAlive]);
+  }, [privateState?.deathCause, privateState?.isAlive]);
 
   const toggleSound = () => {
     setSoundEnabled((enabled) => {
@@ -227,6 +241,7 @@ export function GamePage() {
     voters.push(voterId);
     votersByTarget.set(targetId, voters);
   });
+  const votedPlayerIds = new Set(game.votedPlayerIds ?? game.publicVotes.map(({ voterId }) => voterId));
   const lastVoteTally = game.lastVoteTally ?? [];
   const showVoteResult = (game.phase === "ROUND_RESULT" || game.phase === "FINISHED") && lastVoteTally.length > 0;
 
@@ -353,6 +368,7 @@ export function GamePage() {
                       (canActAtNight && privateState.role === "VAMPIRE" && player.id === session?.playerId) ||
                       (canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId);
                     const voterIds = votersByTarget.get(player.id) ?? [];
+                    const hasVoted = votedPlayerIds.has(player.id);
                     return (
                     <button
                       key={player.id}
@@ -360,7 +376,7 @@ export function GamePage() {
                       onClick={() => setSelected(player.id)}
                       className={`relative min-h-44 overflow-hidden rounded-2xl border p-5 text-left transition ${
                         !player.isAlive
-                          ? "border-rose-400/15 bg-rose-950/25 opacity-55"
+                          ? "border-rose-400/25 bg-black/55"
                           : selected === player.id
                             ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]"
                             : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"
@@ -375,6 +391,11 @@ export function GamePage() {
                           <span className="mt-1 flex flex-wrap items-center gap-1.5">
                             {player.id === session?.playerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
                             {player.id === room.ownerPlayerId && <Crown size={12} className="text-amber-300" />}
+                            {canVote && hasVoted && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-emerald-500/15 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-200">
+                                <Check size={12} strokeWidth={3} /> Oy verdi
+                              </span>
+                            )}
                           </span>
                         </span>
                       </span>
@@ -394,7 +415,7 @@ export function GamePage() {
                         <span className="absolute right-3 top-3 rounded-full bg-white/[.08] px-2 py-1 text-[10px] font-bold">{voterIds.length}</span>
                       )}
                       {selected === player.id && <span className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-rose-500 text-white"><Check size={16} /></span>}
-                      {!player.isAlive && <DeadCross />}
+                      {!player.isAlive && <DeadMark />}
                     </button>
                     );
                   })}
@@ -584,7 +605,7 @@ function DeathEffect({ cause }: { cause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | n
     <div className="death-overlay fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/75 p-6" role="alert" aria-live="assertive">
       <div className="blood-cloud blood-cloud-one" />
       <div className="blood-cloud blood-cloud-two" />
-      <div className="death-slash" aria-hidden="true" />
+      {vampireAttack && <div className="death-slash" aria-hidden="true" />}
       <div className="death-message relative z-10 text-center">
         <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
           {vampireAttack ? <Swords size={46} /> : <Skull size={46} />}
@@ -747,7 +768,7 @@ function PlayerBoard({
                   </span>
                 )}
               </div>
-              {!player.isAlive && <DeadCross />}
+              {!player.isAlive && <DeadMark />}
             </article>
           );
         })}
@@ -756,11 +777,17 @@ function PlayerBoard({
   );
 }
 
-function DeadCross() {
+function DeadMark() {
   return (
-    <span className="pointer-events-none absolute inset-0" aria-hidden="true">
-      <span className="absolute left-1/2 top-1/2 h-1 w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[-35deg] rounded-full bg-rose-500/75 shadow-[0_0_12px_rgba(244,63,94,.35)]" />
-      <span className="absolute left-1/2 top-1/2 h-1 w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[35deg] rounded-full bg-rose-500/75 shadow-[0_0_12px_rgba(244,63,94,.35)]" />
+    <span className="pointer-events-none absolute inset-0 z-10 bg-slate-950/55 backdrop-grayscale" aria-hidden="true">
+      <span className="absolute right-3 top-3 rounded-full border border-rose-300/25 bg-rose-950/80 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-200">
+        Öldü
+      </span>
+      <span className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-rose-300/25 bg-black/70 text-slate-200 shadow-[0_0_30px_rgba(159,18,57,.28)]">
+        <Skull size={30} />
+        <span className="absolute h-1 w-20 rotate-[-36deg] rounded-full bg-rose-500/90 shadow-[0_0_10px_rgba(244,63,94,.45)]" />
+        <span className="absolute h-1 w-20 rotate-[36deg] rounded-full bg-rose-500/90 shadow-[0_0_10px_rgba(244,63,94,.45)]" />
+      </span>
     </span>
   );
 }

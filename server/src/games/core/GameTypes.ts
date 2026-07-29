@@ -17,6 +17,7 @@ export interface PublicGameState {
   players: PublicPlayer[];
   lastResult: string | null;
   votesCast: number;
+  votedPlayerIds: string[];
   publicVotes: { voterId: string; targetId: string }[];
   lastVoteTally: { targetId: string; count: number; voterIds: string[] }[];
 }

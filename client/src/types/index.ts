@@ -75,6 +75,7 @@ export interface GameState {
   phaseEndsAt: number | null;
   serverNow?: number;
   votesCast: number;
+  votedPlayerIds?: string[];
   publicVotes: { voterId: string; targetId: string }[];
   lastVoteTally: { targetId: string; count: number; voterIds: string[] }[];
 }

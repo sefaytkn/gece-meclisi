@@ -6,6 +6,8 @@ export type GameSound =
   | "NIGHT_CREATURE"
   | "VOTING_START"
   | "VOTING_END"
+  | "VAMPIRE_ATTACK"
+  | "VOTE_EXECUTION"
   | "PLAYER_ELIMINATED"
   | "VAMPIRE_VICTORY"
   | "VILLAGE_VICTORY";
@@ -207,9 +209,33 @@ export function playGameSound(sound: GameSound) {
   }
 
   if (sound === "PLAYER_ELIMINATED") {
-    const { output } = createOutput(context, 0.95);
-    addTone(context, output, { frequency: 135, frequencyEnd: 42, duration: 0.55, gain: 0.58, type: "sawtooth" });
-    addNoise(context, output, { duration: 0.23, gain: 0.72, frequency: 860 });
+    const { output } = createOutput(context, 0.75);
+    addNoise(context, output, { duration: 0.11, gain: 0.42, frequency: 520 });
+    addTone(context, output, { frequency: 105, frequencyEnd: 48, duration: 0.48, gain: 0.4, type: "triangle" });
+    return;
+  }
+
+  if (sound === "VAMPIRE_ATTACK") {
+    const { output } = createOutput(context, 1.15);
+    addNoise(context, output, { duration: 0.14, gain: 0.82, frequency: 3400 });
+    addTone(context, output, { frequency: 1850, frequencyEnd: 520, duration: 0.2, gain: 0.28, type: "sawtooth" });
+    addNoise(context, output, { start: 0.1, duration: 0.18, gain: 0.7, frequency: 330 });
+    addTone(context, output, { frequency: 92, frequencyEnd: 43, duration: 0.62, start: 0.1, gain: 0.58, type: "triangle" });
+    addNoise(context, output, { start: 0.42, duration: 0.1, gain: 0.34, frequency: 2100 });
+    return;
+  }
+
+  if (sound === "VOTE_EXECUTION") {
+    const { output } = createOutput(context, 1.05);
+    [
+      { start: 0.03, frequency: 1900, gain: 0.56 },
+      { start: 0.12, frequency: 1250, gain: 0.62 },
+      { start: 0.21, frequency: 760, gain: 0.68 }
+    ].forEach(({ start, frequency, gain }) => {
+      addNoise(context, output, { start, duration: 0.055, gain, frequency });
+    });
+    addTone(context, output, { frequency: 118, frequencyEnd: 46, duration: 0.58, start: 0.2, gain: 0.6, type: "triangle" });
+    addNoise(context, output, { start: 0.24, duration: 0.2, gain: 0.38, frequency: 240 });
     return;
   }
 

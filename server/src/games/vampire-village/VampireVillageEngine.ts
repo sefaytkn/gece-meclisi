@@ -254,6 +254,7 @@ export class VampireVillageEngine implements GameEngine {
         connected: player.connected
       })),
       votesCast: this.votes.size,
+      votedPlayerIds: [...this.votes.keys()],
       publicVotes:
         this.settings.voteVisibility === "PUBLIC"
           ? [...this.votes].map(([voterId, targetId]) => ({ voterId, targetId }))
