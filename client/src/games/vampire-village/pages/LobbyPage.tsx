@@ -40,10 +40,6 @@ export function LobbyPage() {
   }, [room?.code, room?.status, navigate]);
 
   useEffect(() => {
-    if (room?.status === "WAITING") sessionStorage.removeItem(`gece:village-night:${room.code}`);
-  }, [room?.code, room?.status]);
-
-  useEffect(() => {
     if (!room || activeSliderRef.current) return;
     setDraftMaxPlayers(room.maxPlayers);
     setDraftDurations({
