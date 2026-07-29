@@ -2,6 +2,7 @@ export type GameSound =
   | "NIGHT_START"
   | "DAY_START"
   | "CLOCK_BELL"
+  | "TIME_WARNING"
   | "NIGHT_CREATURE"
   | "VOTING_START"
   | "VOTING_END"
@@ -152,6 +153,29 @@ export function playGameSound(sound: GameSound) {
     addTone(context, output, { frequency: 698, frequencyEnd: 670, duration: 1.2, gain: 0.42, type: "sine" });
     addTone(context, output, { frequency: 1396, frequencyEnd: 1320, duration: 0.9, gain: 0.2, type: "sine" });
     addTone(context, output, { frequency: 2093, duration: 0.55, gain: 0.08, type: "sine" });
+    return;
+  }
+
+  if (sound === "TIME_WARNING") {
+    const { output } = createOutput(context, 2.25);
+    [0, 0.62, 1.24].forEach((start, index) => {
+      addTone(context, output, {
+        frequency: 784 - index * 44,
+        frequencyEnd: 720 - index * 40,
+        duration: 0.82,
+        start,
+        gain: 0.38,
+        type: "sine"
+      });
+      addTone(context, output, {
+        frequency: 1568 - index * 88,
+        frequencyEnd: 1440 - index * 80,
+        duration: 0.55,
+        start,
+        gain: 0.14,
+        type: "sine"
+      });
+    });
     return;
   }
 

@@ -54,7 +54,7 @@ export function GamePage() {
   const [atmosphereMode, setAtmosphereMode] = useState<VillageAtmosphereMode>("DAY");
   const wasAliveRef = useRef<boolean | null>(null);
   const previousPhaseRef = useRef<GameState["phase"] | null>(null);
-  const playedClockBellRef = useRef("");
+  const playedTimeWarningRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
   const gameReady = Boolean(game);
 
@@ -127,11 +127,12 @@ export function GamePage() {
   }, [game?.phase, game?.winner]);
 
   useEffect(() => {
-    if (!game?.phaseEndsAt || seconds !== 10) return;
-    const bellKey = `${game.round}:${game.phase}:${game.phaseEndsAt}`;
-    if (playedClockBellRef.current === bellKey) return;
-    playedClockBellRef.current = bellKey;
-    playGameSound("CLOCK_BELL");
+    const isWarningPhase = game?.phase === "DAY_DISCUSSION" || game?.phase === "DAY_VOTING";
+    if (!game?.phaseEndsAt || !isWarningPhase || seconds <= 0 || seconds > 10) return;
+    const warningKey = `${game.round}:${game.phase}:${game.phaseEndsAt}`;
+    if (playedTimeWarningRef.current === warningKey) return;
+    playedTimeWarningRef.current = warningKey;
+    playGameSound("TIME_WARNING");
   }, [game?.phase, game?.phaseEndsAt, game?.round, seconds]);
 
   useEffect(() => {
