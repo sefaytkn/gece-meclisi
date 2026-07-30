@@ -234,6 +234,9 @@ export function GamePage() {
   const votedPlayerIds = new Set(game.votedPlayerIds ?? game.publicVotes.map(({ voterId }) => voterId));
   const lastVoteTally = game.lastVoteTally ?? [];
   const showVoteResult = (game.phase === "ROUND_RESULT" || game.phase === "FINISHED") && lastVoteTally.length > 0;
+  const votingProgress = Math.min(100, Math.max(0, (seconds / Math.max(1, room.settings.votingSeconds)) * 100));
+  const votingTimerTone = seconds <= 10 ? "critical" : votingProgress <= 35 ? "warning" : "normal";
+  const formattedTime = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   return (
     <PageShell full>
@@ -250,15 +253,50 @@ export function GamePage() {
           <h1 className="mt-2 font-display text-3xl font-semibold">{phaseNames[game.phase]}</h1>
         </div>
         <div className="flex items-center gap-3">
-          {game.phaseEndsAt && (
+          {game.phaseEndsAt && game.phase !== "DAY_VOTING" && (
             <div className="flex items-center gap-3 rounded-2xl border border-gold/[.12] bg-black/25 px-4 py-2.5">
               <Clock3 size={16} className={seconds <= 10 ? "text-rose-300" : "text-mist"} />
-              <span className="font-display text-xl tabular-nums">{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</span>
+              <span className="font-display text-xl tabular-nums">{formattedTime}</span>
             </div>
           )}
           <span className="rounded-xl border border-gold/[.12] bg-black/25 px-3 py-3 text-xs text-gold">{room.code}</span>
         </div>
       </div>
+
+      {game.phase === "DAY_VOTING" && game.phaseEndsAt && (
+        <section className={`voting-timer voting-timer-${votingTimerTone} mb-6`} aria-label={`Oylama için kalan süre ${formattedTime}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="voting-timer-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+                <Vote size={18} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[.24em] text-amber-200/70">OYLAMA SÜRESİ</p>
+                <p className="mt-1 truncate text-xs text-slate-300">
+                  {seconds <= 10 ? "Kararını ver, süre bitiyor." : `${game.votesCast} oyuncu oyunu kullandı.`}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Clock3 size={16} />
+              <span className="font-display text-2xl font-semibold tabular-nums sm:text-3xl">{formattedTime}</span>
+            </div>
+          </div>
+          <div
+            className="voting-timer-track mt-4"
+            role="progressbar"
+            aria-label="Kalan oylama süresi"
+            aria-valuemin={0}
+            aria-valuemax={room.settings.votingSeconds}
+            aria-valuenow={seconds}
+          >
+            <span className="voting-timer-fill" style={{ width: `${votingProgress}%` }} />
+            <span className="voting-timer-marker left-1/4" />
+            <span className="voting-timer-marker left-1/2" />
+            <span className="voting-timer-marker left-3/4" />
+          </div>
+        </section>
+      )}
 
       {connectionState !== "connected" && (
         <div className="mb-5 rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4 text-sm text-amber-100" role="status">
