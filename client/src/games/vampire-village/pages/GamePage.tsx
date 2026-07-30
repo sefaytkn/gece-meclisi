@@ -10,6 +10,7 @@ import { configureGameAudio, playGameSound, unlockGameAudio } from "../../../ser
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role } from "../../../types";
+import { shouldShowPersonalDeathEffect } from "../deathPresentation";
 
 const phaseNames = {
   WAITING: "Bekleniyor",
@@ -143,7 +144,7 @@ export function GamePage() {
   }, [game?.phase, game?.phaseEndsAt, game?.round, seconds]);
 
   useEffect(() => {
-    if (!elimination) return;
+    if (!elimination || !shouldShowPersonalDeathEffect(elimination, session?.playerId)) return;
     setVisibleElimination(elimination);
     try {
       playGameSound(
@@ -158,7 +159,7 @@ export function GamePage() {
     }
     const timeout = window.setTimeout(() => setVisibleElimination(null), 4000);
     return () => window.clearTimeout(timeout);
-  }, [elimination?.id]);
+  }, [elimination?.id, session?.playerId]);
 
   const toggleSound = () => {
     setSoundEnabled((enabled) => {

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { UpdateNotice } from "./components/UpdateNotice";
 
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
@@ -32,20 +33,23 @@ function RouteFallback() {
 
 export function App() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} />
-        <Route path="/games" element={<GamesPage />} />
-        <Route path="/games/vampire-village" element={<VampireInfoPage />} />
-        <Route path="/rooms/create" element={<CreateRoomPage />} />
-        <Route path="/rooms/join" element={<JoinRoomPage />} />
-        <Route path="/rooms/:code/lobby" element={<LobbyPage />} />
-        <Route path="/rooms/:code/game" element={<GamePage />} />
-        <Route path="/profile" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Suspense>
+    <>
+      <UpdateNotice />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
+          <Route path="/games" element={<GamesPage />} />
+          <Route path="/games/vampire-village" element={<VampireInfoPage />} />
+          <Route path="/rooms/create" element={<CreateRoomPage />} />
+          <Route path="/rooms/join" element={<JoinRoomPage />} />
+          <Route path="/rooms/:code/lobby" element={<LobbyPage />} />
+          <Route path="/rooms/:code/game" element={<GamePage />} />
+          <Route path="/profile" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
