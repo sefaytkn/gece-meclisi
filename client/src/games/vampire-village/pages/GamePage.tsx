@@ -156,7 +156,7 @@ export function GamePage() {
     } catch {
       // The visual effect still works when the browser blocks audio playback.
     }
-    const timeout = window.setTimeout(() => setVisibleElimination(null), 3200);
+    const timeout = window.setTimeout(() => setVisibleElimination(null), 4000);
     return () => window.clearTimeout(timeout);
   }, [elimination?.id]);
 
@@ -791,31 +791,68 @@ function DeathEffect({ elimination }: { elimination: PlayerElimination }) {
   const voteExecution = elimination.cause === "VOTE";
 
   return (
-    <div className="death-overlay fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/75 p-6" role="alert" aria-live="assertive">
+    <div className={`death-overlay fixed inset-0 z-[80] grid place-items-center overflow-hidden p-6 ${vampireAttack ? "bg-black/45" : "bg-black/75"}`} role="alert" aria-live="assertive">
       <div className="blood-cloud blood-cloud-one" />
       <div className="blood-cloud blood-cloud-two" />
-      {vampireAttack && <div className="death-slash" aria-hidden="true" />}
-      <div className="death-message relative z-10 text-center">
-        <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
-          {vampireAttack ? <Swords size={46} /> : <Skull size={46} />}
-        </span>
-        <p className="mt-6 text-xs font-black uppercase tracking-[.38em] text-rose-300">
-          {vampireAttack ? "GECE KATLİAMI" : voteExecution ? "KASABANIN KARARI" : "OYUNCU ELENDİ"}
-        </p>
-        <h2 className="mt-3 font-display text-4xl font-semibold text-white sm:text-6xl">
-          {vampireAttack
-            ? `${elimination.nickname} dün gece katledildi.`
-            : voteExecution
+      {vampireAttack ? (
+        <VampireKillSequence nickname={elimination.nickname} />
+      ) : (
+        <div className="death-message relative z-10 text-center">
+          <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
+            <Skull size={46} />
+          </span>
+          <p className="mt-6 text-xs font-black uppercase tracking-[.38em] text-rose-300">
+            {voteExecution ? "KASABANIN KARARI" : "OYUNCU ELENDİ"}
+          </p>
+          <h2 className="mt-3 font-display text-4xl font-semibold text-white sm:text-6xl">
+            {voteExecution
               ? `${elimination.nickname} köyde istenmiyordu.`
               : `${elimination.nickname} artık kasabada değil.`}
-        </h2>
-        <p className="mt-3 text-sm text-rose-100/65">
-          {vampireAttack
-            ? "Vampirler gecenin karanlığında yine iz bıraktı."
-            : voteExecution
+          </h2>
+          <p className="mt-3 text-sm text-rose-100/65">
+            {voteExecution
               ? `${elimination.nickname}, kasabanın oylarıyla asıldı.`
               : "Kasaba bir oyuncusunu daha kaybetti."}
-        </p>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VampireKillSequence({ nickname }: { nickname: string }) {
+  return (
+    <div className="vampire-kill-sequence absolute inset-0 z-10 overflow-hidden" aria-label={`${nickname} dün gece vampirler tarafından katledildi.`}>
+      <div className="vampire-kill-rift" aria-hidden="true" />
+      <div className="vampire-kill-lines" aria-hidden="true">
+        <span /><span /><span /><span />
+      </div>
+      <div className="vampire-kill-stage" aria-hidden="true">
+        <div className="vampire-kill-actor vampire-killer">
+          <span className="vampire-character-head">
+            <span className="vampire-eye vampire-eye-left" />
+            <span className="vampire-eye vampire-eye-right" />
+          </span>
+          <span className="vampire-character-body" />
+          <span className="vampire-killer-arm">
+            <span className="vampire-blade" />
+          </span>
+        </div>
+        <div className="vampire-kill-actor vampire-victim">
+          <span className="vampire-character-head">
+            <span className="victim-face"><UsersRound size={24} /></span>
+          </span>
+          <span className="vampire-character-body" />
+        </div>
+        <span className="vampire-impact"><Swords size={38} /></span>
+        <span className="vampire-blood-drop vampire-blood-drop-one" />
+        <span className="vampire-blood-drop vampire-blood-drop-two" />
+        <span className="vampire-blood-drop vampire-blood-drop-three" />
+      </div>
+      <div className="vampire-kill-caption absolute inset-x-4 bottom-[12%] text-center">
+        <p className="text-[10px] font-black uppercase tracking-[.4em] text-rose-300 sm:text-xs">GECE SALDIRISI</p>
+        <h2 className="mt-3 font-display text-4xl font-semibold text-white sm:text-6xl">{nickname} dün gece katledildi.</h2>
+        <p className="mt-3 text-sm text-rose-100/65">Vampirler karanlıkta bir kez daha iz bıraktı.</p>
       </div>
     </div>
   );

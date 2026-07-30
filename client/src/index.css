@@ -696,11 +696,282 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .death-overlay {
-  animation: death-fade 3.2s ease both;
+  animation: death-fade 4s ease both;
 }
 
 .death-message {
-  animation: death-message 3.2s cubic-bezier(.2, .8, .2, 1) both;
+  animation: death-message 4s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.vampire-kill-sequence {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(107, 8, 32, .24), transparent 36rem),
+    rgba(2, 3, 7, .34);
+}
+
+.vampire-kill-rift {
+  position: absolute;
+  left: -8%;
+  top: 50%;
+  width: 116%;
+  height: min(42vh, 24rem);
+  translate: 0 -50%;
+  background:
+    linear-gradient(100deg, #65081e 0%, #d51f3f 20%, #ffd1d6 49%, #bd1232 77%, #430510 100%);
+  clip-path: polygon(0 43%, 10% 23%, 18% 36%, 27% 12%, 36% 34%, 48% 8%, 59% 33%, 72% 15%, 83% 36%, 100% 20%, 94% 49%, 100% 69%, 84% 62%, 73% 87%, 62% 64%, 49% 92%, 38% 66%, 25% 87%, 17% 62%, 4% 76%, 10% 53%);
+  filter: drop-shadow(0 0 36px rgba(225, 29, 72, .46));
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: vampire-rift 4s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.vampire-kill-rift::after {
+  content: "";
+  position: absolute;
+  inset: 18% 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 245, 240, .86) 30%, rgba(255, 255, 255, .96) 53%, rgba(255, 231, 232, .78) 72%, transparent);
+  filter: blur(5px);
+}
+
+.vampire-kill-lines {
+  position: absolute;
+  inset: 34% -10% auto;
+  height: 32%;
+  opacity: 0;
+  animation: vampire-lines 4s ease both;
+}
+
+.vampire-kill-lines span {
+  position: absolute;
+  left: 0;
+  width: 120%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .78), transparent);
+  transform: rotate(-3deg);
+}
+
+.vampire-kill-lines span:nth-child(1) { top: 8%; }
+.vampire-kill-lines span:nth-child(2) { top: 35%; left: -12%; }
+.vampire-kill-lines span:nth-child(3) { top: 67%; left: 8%; }
+.vampire-kill-lines span:nth-child(4) { top: 91%; left: -4%; }
+
+.vampire-kill-stage {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  width: 22rem;
+  height: 16rem;
+  translate: -50% -50%;
+}
+
+.vampire-kill-actor {
+  position: absolute;
+  bottom: 1rem;
+  width: 8rem;
+  height: 13rem;
+  transform-origin: center bottom;
+}
+
+.vampire-character-head {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 0;
+  width: 5.7rem;
+  height: 5.7rem;
+  translate: -50% 0;
+  border: 3px solid rgba(255, 255, 255, .18);
+  border-radius: 46% 54% 48% 52%;
+  box-shadow: inset -12px -10px 18px rgba(0, 0, 0, .35), 0 12px 25px rgba(0, 0, 0, .28);
+}
+
+.vampire-character-body {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 7.4rem;
+  height: 9rem;
+  translate: -50% 0;
+  border: 3px solid rgba(255, 255, 255, .12);
+  border-radius: 48% 48% 32% 32%;
+  box-shadow: inset -18px -14px 26px rgba(0, 0, 0, .35), 0 20px 30px rgba(0, 0, 0, .28);
+}
+
+.vampire-killer {
+  left: 1.6rem;
+  z-index: 1;
+  opacity: 0;
+  transform: translateX(-10rem) scale(.92);
+  animation: vampire-killer-enter 4s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.vampire-killer .vampire-character-head,
+.vampire-killer .vampire-character-body {
+  background: linear-gradient(145deg, #7f102c, #240711);
+}
+
+.vampire-eye {
+  position: absolute;
+  top: 2.15rem;
+  width: .58rem;
+  height: .34rem;
+  border-radius: 50%;
+  background: #fff1d6;
+  box-shadow: 0 0 12px rgba(255, 241, 214, .9);
+}
+
+.vampire-eye-left { left: 1.55rem; rotate: 10deg; }
+.vampire-eye-right { right: 1.55rem; rotate: -10deg; }
+
+.vampire-victim {
+  right: 1.45rem;
+  z-index: 2;
+  animation: vampire-victim-fall 4s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.vampire-victim .vampire-character-head,
+.vampire-victim .vampire-character-body {
+  background: linear-gradient(145deg, #374151, #111827);
+}
+
+.victim-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(226, 232, 240, .78);
+}
+
+.vampire-killer-arm {
+  position: absolute;
+  z-index: 5;
+  right: .2rem;
+  top: 5.2rem;
+  width: 6.6rem;
+  height: 1.7rem;
+  border: 2px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: #4b0b1c;
+  transform: rotate(-20deg) scaleX(.45);
+  transform-origin: left center;
+  opacity: 0;
+  animation: vampire-arm-strike 4s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.vampire-blade {
+  position: absolute;
+  right: -3.3rem;
+  top: .15rem;
+  width: 3.8rem;
+  height: 1rem;
+  border-radius: 0 90% 10% 0;
+  background: linear-gradient(to bottom, #f8fafc, #94a3b8 62%, #475569);
+  clip-path: polygon(0 20%, 100% 50%, 0 100%);
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, .5));
+}
+
+.vampire-impact {
+  position: absolute;
+  z-index: 8;
+  left: 55%;
+  top: 42%;
+  display: grid;
+  width: 5rem;
+  height: 5rem;
+  place-items: center;
+  translate: -50% -50%;
+  border-radius: 50%;
+  color: white;
+  background: rgba(244, 63, 94, .72);
+  box-shadow: 0 0 55px rgba(244, 63, 94, .9);
+  opacity: 0;
+  animation: vampire-impact 4s ease-out both;
+}
+
+.vampire-blood-drop {
+  position: absolute;
+  z-index: 7;
+  left: 57%;
+  top: 43%;
+  width: 2rem;
+  height: .45rem;
+  border-radius: 999px;
+  background: #be123c;
+  opacity: 0;
+  transform-origin: left center;
+}
+
+.vampire-blood-drop-one { animation: vampire-blood-one 4s ease-out both; }
+.vampire-blood-drop-two { animation: vampire-blood-two 4s ease-out both; }
+.vampire-blood-drop-three { animation: vampire-blood-three 4s ease-out both; }
+
+.vampire-kill-caption {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: vampire-caption 4s cubic-bezier(.2, .8, .2, 1) both;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, .8);
+}
+
+@keyframes vampire-rift {
+  0%, 5% { opacity: 0; transform: scaleX(0); }
+  18%, 78% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.04); }
+}
+
+@keyframes vampire-lines {
+  0%, 12% { opacity: 0; transform: translateX(-8%); }
+  22%, 68% { opacity: .7; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(7%); }
+}
+
+@keyframes vampire-killer-enter {
+  0%, 12% { opacity: 0; transform: translateX(-10rem) scale(.92); }
+  28%, 75% { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-1rem) scale(1); }
+}
+
+@keyframes vampire-arm-strike {
+  0%, 28% { opacity: 0; transform: rotate(-20deg) scaleX(.45); }
+  34% { opacity: 1; transform: rotate(-5deg) scaleX(1.06); }
+  42%, 70% { opacity: 1; transform: rotate(-12deg) scaleX(.82); }
+  100% { opacity: 0; transform: rotate(-12deg) scaleX(.82); }
+}
+
+@keyframes vampire-victim-fall {
+  0%, 32% { opacity: 1; transform: translate(0) rotate(0); }
+  38% { transform: translateX(1.1rem) rotate(7deg); }
+  62%, 75% { opacity: .75; transform: translate(2.1rem, 4.2rem) rotate(68deg) scale(.92); }
+  100% { opacity: 0; transform: translate(2.1rem, 5rem) rotate(72deg) scale(.88); }
+}
+
+@keyframes vampire-impact {
+  0%, 32% { opacity: 0; transform: scale(.2); }
+  35% { opacity: 1; transform: scale(1); }
+  46%, 100% { opacity: 0; transform: scale(1.65); }
+}
+
+@keyframes vampire-blood-one {
+  0%, 34% { opacity: 0; transform: rotate(-34deg) scaleX(.1); }
+  40% { opacity: 1; transform: rotate(-34deg) scaleX(3.2); }
+  58%, 100% { opacity: 0; transform: rotate(-34deg) translateX(4rem) scaleX(3.2); }
+}
+
+@keyframes vampire-blood-two {
+  0%, 34% { opacity: 0; transform: rotate(8deg) scaleX(.1); }
+  41% { opacity: 1; transform: rotate(8deg) scaleX(2.7); }
+  58%, 100% { opacity: 0; transform: rotate(8deg) translateX(3.5rem) scaleX(2.7); }
+}
+
+@keyframes vampire-blood-three {
+  0%, 34% { opacity: 0; transform: rotate(39deg) scaleX(.1); }
+  42% { opacity: 1; transform: rotate(39deg) scaleX(2.2); }
+  58%, 100% { opacity: 0; transform: rotate(39deg) translateX(3rem) scaleX(2.2); }
+}
+
+@keyframes vampire-caption {
+  0%, 48% { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+  62%, 86% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
 }
 
 .death-slash {
@@ -775,6 +1046,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .home-fog { opacity: .08; }
   .village-background-layer { background-position: center bottom; }
   .village-image-fog { opacity: .12; }
+  .vampire-kill-stage { scale: .78; }
+  .vampire-kill-rift { height: min(36vh, 18rem); }
+  .vampire-kill-caption { bottom: 8%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
