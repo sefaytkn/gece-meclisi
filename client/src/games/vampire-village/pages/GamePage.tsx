@@ -425,8 +425,8 @@ export function GamePage() {
                       <SkipForward size={19} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-bold text-white">Kimse asılmasın</span>
-                      <span className="mt-1 block text-[11px] leading-4 text-mist">Boş oy ver ve oylamayı geç.</span>
+                      <span className="block text-sm font-bold text-white">Geç</span>
+                      <span className="mt-1 block text-[11px] leading-4 text-mist">Bu tur kimseye oy verme.</span>
                     </span>
                     {selected === SKIP_VOTE_ID && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-white"><Check size={17} /></span>}
                   </button>
@@ -434,11 +434,11 @@ export function GamePage() {
                 {selected && (
                   <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-500/[.05] px-3 py-2 text-xs text-rose-100">
                     <Check size={14} className="shrink-0 text-rose-300" />
-                    <span><strong>{selected === SKIP_VOTE_ID ? "Kimse asılmasın" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
+                    <span><strong>{selected === SKIP_VOTE_ID ? "Geç" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
                   </div>
                 )}
                 <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
-                  {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {selected === SKIP_VOTE_ID ? "Boş oyumu gönder" : privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
+                  {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {selected === SKIP_VOTE_ID ? "Geç oyu ver" : privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
                 </button>
               </div>
             </section>
@@ -573,7 +573,7 @@ export function GamePage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {lastVoteTally.map((item) => (
                     <span key={item.targetId} className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5 text-xs">
-                      {item.targetId === SKIP_VOTE_ID ? "Kimse asılmasın" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
+                      {item.targetId === SKIP_VOTE_ID ? "Geç" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
                     </span>
                   ))}
                 </div>
@@ -757,7 +757,7 @@ function VoteResultPanel({
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.05] text-mist"><SkipForward size={17} /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Kimse asılmasın oyları</span>
+              <span className="block text-sm font-semibold">Geç oyları</span>
               <span className="mt-0.5 block text-[10px] text-mist">{skipTally?.count ?? 0} oy</span>
             </span>
             <div className="flex flex-wrap justify-end gap-1">
