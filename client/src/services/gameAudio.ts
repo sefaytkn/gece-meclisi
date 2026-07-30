@@ -44,14 +44,21 @@ function track(source: AudioScheduledSourceNode) {
   source.addEventListener("ended", () => activeSources.delete(source), { once: true });
 }
 
-function createOutput(context: AudioContext, duration: number) {
+function createOutput(context: AudioContext, duration: number, level = 0.72) {
   stopActiveSound();
   const output = context.createGain();
+  const compressor = context.createDynamicsCompressor();
   const now = context.currentTime;
-  output.gain.setValueAtTime(Math.max(0.0001, soundVolume), now);
-  output.gain.setValueAtTime(Math.max(0.0001, soundVolume), now + Math.max(0, duration - 0.16));
+  const targetVolume = Math.max(0.0001, soundVolume * level);
+  compressor.threshold.setValueAtTime(-24, now);
+  compressor.knee.setValueAtTime(18, now);
+  compressor.ratio.setValueAtTime(5, now);
+  compressor.attack.setValueAtTime(0.004, now);
+  compressor.release.setValueAtTime(0.24, now);
+  output.gain.setValueAtTime(targetVolume, now);
+  output.gain.setValueAtTime(targetVolume, now + Math.max(0, duration - 0.18));
   output.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  output.connect(context.destination);
+  output.connect(compressor).connect(context.destination);
   activeOutput = output;
   window.setTimeout(() => {
     if (activeOutput === output) {
@@ -72,6 +79,7 @@ function addTone(
     start?: number;
     duration: number;
     type?: OscillatorType;
+    attack?: number;
   }
 ) {
   const start = context.currentTime + (options.start ?? 0);
@@ -83,7 +91,7 @@ function addTone(
     oscillator.frequency.exponentialRampToValueAtTime(options.frequencyEnd, start + options.duration);
   }
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(options.gain ?? 0.35, start + 0.025);
+  gain.gain.exponentialRampToValueAtTime(options.gain ?? 0.35, start + (options.attack ?? 0.035));
   gain.gain.exponentialRampToValueAtTime(0.0001, start + options.duration);
   oscillator.connect(gain).connect(output);
   track(oscillator);
@@ -94,7 +102,15 @@ function addTone(
 function addNoise(
   context: AudioContext,
   output: AudioNode,
-  options: { start?: number; duration: number; gain?: number; frequency?: number }
+  options: {
+    start?: number;
+    duration: number;
+    gain?: number;
+    frequency?: number;
+    filterType?: BiquadFilterType;
+    q?: number;
+    attack?: number;
+  }
 ) {
   const start = context.currentTime + (options.start ?? 0);
   const frameCount = Math.floor(context.sampleRate * options.duration);
@@ -107,10 +123,11 @@ function addNoise(
   const filter = context.createBiquadFilter();
   const gain = context.createGain();
   source.buffer = buffer;
-  filter.type = "bandpass";
+  filter.type = options.filterType ?? "bandpass";
   filter.frequency.value = options.frequency ?? 720;
-  filter.Q.value = 0.8;
-  gain.gain.setValueAtTime(options.gain ?? 0.25, start);
+  filter.Q.value = options.q ?? 0.8;
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(options.gain ?? 0.25, start + (options.attack ?? 0.008));
   gain.gain.exponentialRampToValueAtTime(0.0001, start + options.duration);
   source.connect(filter).connect(gain).connect(output);
   track(source);
@@ -135,46 +152,46 @@ export function playGameSound(sound: GameSound) {
   if (context.state === "suspended") void context.resume();
 
   if (sound === "NIGHT_START") {
-    const { output } = createOutput(context, 1.45);
-    addTone(context, output, { frequency: 116, frequencyEnd: 58, duration: 1.35, gain: 0.42, type: "sine" });
-    addTone(context, output, { frequency: 232, frequencyEnd: 126, duration: 1.05, gain: 0.15, type: "triangle" });
-    addNoise(context, output, { duration: 1.2, gain: 0.1, frequency: 460 });
+    const { output } = createOutput(context, 1.55, 0.58);
+    addTone(context, output, { frequency: 98, frequencyEnd: 49, duration: 1.45, gain: 0.38, type: "sine", attack: 0.12 });
+    addTone(context, output, { frequency: 196, frequencyEnd: 110, duration: 1.2, gain: 0.1, type: "sine", attack: 0.16 });
+    addNoise(context, output, { duration: 1.3, gain: 0.045, frequency: 320, filterType: "lowpass", attack: 0.18 });
     return;
   }
 
   if (sound === "DAY_START") {
-    const { output } = createOutput(context, 1.4);
+    const { output } = createOutput(context, 1.4, 0.5);
     [262, 330, 392, 523].forEach((frequency, index) => {
-      addTone(context, output, { frequency, duration: 0.65, start: index * 0.17, gain: 0.22, type: "sine" });
+      addTone(context, output, { frequency, duration: 0.72, start: index * 0.17, gain: 0.16, type: "sine", attack: 0.045 });
     });
     return;
   }
 
   if (sound === "CLOCK_BELL") {
-    const { output } = createOutput(context, 1.35);
-    addTone(context, output, { frequency: 698, frequencyEnd: 670, duration: 1.2, gain: 0.42, type: "sine" });
-    addTone(context, output, { frequency: 1396, frequencyEnd: 1320, duration: 0.9, gain: 0.2, type: "sine" });
-    addTone(context, output, { frequency: 2093, duration: 0.55, gain: 0.08, type: "sine" });
+    const { output } = createOutput(context, 1.45, 0.52);
+    addTone(context, output, { frequency: 523, frequencyEnd: 505, duration: 1.3, gain: 0.32, type: "sine" });
+    addTone(context, output, { frequency: 1046, frequencyEnd: 1010, duration: 0.95, gain: 0.12, type: "sine" });
+    addTone(context, output, { frequency: 1568, duration: 0.5, gain: 0.035, type: "sine" });
     return;
   }
 
   if (sound === "TIME_WARNING") {
-    const { output } = createOutput(context, 2.25);
+    const { output } = createOutput(context, 2.25, 0.56);
     [0, 0.62, 1.24].forEach((start, index) => {
       addTone(context, output, {
-        frequency: 784 - index * 44,
-        frequencyEnd: 720 - index * 40,
+        frequency: 622 - index * 30,
+        frequencyEnd: 570 - index * 26,
         duration: 0.82,
         start,
-        gain: 0.38,
+        gain: 0.28,
         type: "sine"
       });
       addTone(context, output, {
-        frequency: 1568 - index * 88,
-        frequencyEnd: 1440 - index * 80,
+        frequency: 1244 - index * 60,
+        frequencyEnd: 1140 - index * 52,
         duration: 0.55,
         start,
-        gain: 0.14,
+        gain: 0.07,
         type: "sine"
       });
     });
@@ -182,74 +199,74 @@ export function playGameSound(sound: GameSound) {
   }
 
   if (sound === "NIGHT_CREATURE") {
-    const { output } = createOutput(context, 1.65);
+    const { output } = createOutput(context, 1.65, 0.38);
     if (Math.random() > 0.5) {
-      addTone(context, output, { frequency: 420, frequencyEnd: 245, duration: 0.34, start: 0.05, gain: 0.3, type: "sine" });
-      addTone(context, output, { frequency: 390, frequencyEnd: 225, duration: 0.38, start: 0.58, gain: 0.26, type: "sine" });
+      addTone(context, output, { frequency: 390, frequencyEnd: 230, duration: 0.38, start: 0.05, gain: 0.2, type: "sine", attack: 0.08 });
+      addTone(context, output, { frequency: 355, frequencyEnd: 215, duration: 0.4, start: 0.62, gain: 0.17, type: "sine", attack: 0.08 });
     } else {
-      addTone(context, output, { frequency: 185, frequencyEnd: 395, duration: 0.75, start: 0.05, gain: 0.27, type: "sine" });
-      addTone(context, output, { frequency: 395, frequencyEnd: 145, duration: 0.75, start: 0.78, gain: 0.25, type: "sine" });
+      addTone(context, output, { frequency: 165, frequencyEnd: 315, duration: 0.72, start: 0.05, gain: 0.18, type: "sine", attack: 0.12 });
+      addTone(context, output, { frequency: 315, frequencyEnd: 135, duration: 0.72, start: 0.78, gain: 0.16, type: "sine", attack: 0.1 });
     }
     return;
   }
 
   if (sound === "VOTING_START") {
-    const { output } = createOutput(context, 1.15);
+    const { output } = createOutput(context, 1.15, 0.52);
     [0, 0.28, 0.56].forEach((start, index) => {
-      addTone(context, output, { frequency: 174 - index * 16, frequencyEnd: 96, duration: 0.42, start, gain: 0.34, type: "triangle" });
+      addTone(context, output, { frequency: 165 - index * 14, frequencyEnd: 92, duration: 0.45, start, gain: 0.24, type: "sine", attack: 0.05 });
     });
     return;
   }
 
   if (sound === "VOTING_END") {
-    const { output } = createOutput(context, 0.95);
-    addNoise(context, output, { duration: 0.16, gain: 0.62, frequency: 980 });
-    addTone(context, output, { frequency: 164, frequencyEnd: 72, duration: 0.75, gain: 0.35, type: "sawtooth" });
+    const { output } = createOutput(context, 1.05, 0.5);
+    addNoise(context, output, { duration: 0.12, gain: 0.18, frequency: 760, q: 1.4 });
+    addTone(context, output, { frequency: 146, frequencyEnd: 68, duration: 0.82, gain: 0.3, type: "sine", attack: 0.04 });
     return;
   }
 
   if (sound === "PLAYER_ELIMINATED") {
-    const { output } = createOutput(context, 0.75);
-    addNoise(context, output, { duration: 0.11, gain: 0.42, frequency: 520 });
-    addTone(context, output, { frequency: 105, frequencyEnd: 48, duration: 0.48, gain: 0.4, type: "triangle" });
+    const { output } = createOutput(context, 0.85, 0.62);
+    addNoise(context, output, { duration: 0.12, gain: 0.22, frequency: 410, filterType: "lowpass" });
+    addTone(context, output, { frequency: 92, frequencyEnd: 42, duration: 0.58, gain: 0.42, type: "sine", attack: 0.02 });
     return;
   }
 
   if (sound === "VAMPIRE_ATTACK") {
-    const { output } = createOutput(context, 1.15);
-    addNoise(context, output, { duration: 0.14, gain: 0.82, frequency: 3400 });
-    addTone(context, output, { frequency: 1850, frequencyEnd: 520, duration: 0.2, gain: 0.28, type: "sawtooth" });
-    addNoise(context, output, { start: 0.1, duration: 0.18, gain: 0.7, frequency: 330 });
-    addTone(context, output, { frequency: 92, frequencyEnd: 43, duration: 0.62, start: 0.1, gain: 0.58, type: "triangle" });
-    addNoise(context, output, { start: 0.42, duration: 0.1, gain: 0.34, frequency: 2100 });
+    const { output } = createOutput(context, 1.05, 0.64);
+    addNoise(context, output, { duration: 0.22, gain: 0.3, frequency: 2500, q: 0.55, attack: 0.015 });
+    addNoise(context, output, { start: 0.13, duration: 0.16, gain: 0.3, frequency: 280, filterType: "lowpass" });
+    addTone(context, output, { frequency: 82, frequencyEnd: 38, duration: 0.68, start: 0.12, gain: 0.46, type: "sine", attack: 0.015 });
+    addNoise(context, output, { start: 0.42, duration: 0.08, gain: 0.11, frequency: 1200, q: 1.8 });
     return;
   }
 
   if (sound === "VOTE_EXECUTION") {
-    const { output } = createOutput(context, 1.05);
+    const { output } = createOutput(context, 1.05, 0.62);
     [
-      { start: 0.03, frequency: 1900, gain: 0.56 },
-      { start: 0.12, frequency: 1250, gain: 0.62 },
-      { start: 0.21, frequency: 760, gain: 0.68 }
+      { start: 0.04, frequency: 1500, gain: 0.24 },
+      { start: 0.12, frequency: 920, gain: 0.28 },
+      { start: 0.2, frequency: 540, gain: 0.3 }
     ].forEach(({ start, frequency, gain }) => {
-      addNoise(context, output, { start, duration: 0.055, gain, frequency });
+      addNoise(context, output, { start, duration: 0.045, gain, frequency, q: 2.2, attack: 0.002 });
     });
-    addTone(context, output, { frequency: 118, frequencyEnd: 46, duration: 0.58, start: 0.2, gain: 0.6, type: "triangle" });
-    addNoise(context, output, { start: 0.24, duration: 0.2, gain: 0.38, frequency: 240 });
+    addTone(context, output, { frequency: 112, frequencyEnd: 68, duration: 0.34, start: 0.03, gain: 0.14, type: "triangle", attack: 0.08 });
+    addNoise(context, output, { start: 0.22, duration: 0.16, gain: 0.24, frequency: 210, filterType: "lowpass" });
+    addTone(context, output, { frequency: 76, frequencyEnd: 36, duration: 0.62, start: 0.2, gain: 0.48, type: "sine", attack: 0.015 });
     return;
   }
 
   if (sound === "VAMPIRE_VICTORY") {
-    const { output } = createOutput(context, 2);
+    const { output } = createOutput(context, 2, 0.52);
     [196, 165, 131, 98].forEach((frequency, index) => {
-      addTone(context, output, { frequency, frequencyEnd: frequency * 0.72, duration: 0.85, start: index * 0.31, gain: 0.28, type: "sawtooth" });
+      addTone(context, output, { frequency, frequencyEnd: frequency * 0.72, duration: 0.9, start: index * 0.31, gain: 0.2, type: "sine", attack: 0.08 });
     });
-    addNoise(context, output, { duration: 1.8, gain: 0.08, frequency: 260 });
+    addNoise(context, output, { duration: 1.8, gain: 0.035, frequency: 220, filterType: "lowpass", attack: 0.2 });
     return;
   }
 
-  const { output } = createOutput(context, 2);
+  const { output } = createOutput(context, 2, 0.48);
   [262, 330, 392, 523, 659].forEach((frequency, index) => {
-    addTone(context, output, { frequency, duration: 0.8, start: index * 0.24, gain: 0.24, type: "sine" });
+    addTone(context, output, { frequency, duration: 0.82, start: index * 0.24, gain: 0.17, type: "sine", attack: 0.045 });
   });
 }

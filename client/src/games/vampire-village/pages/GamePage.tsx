@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CircleX, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, SlidersHorizontal, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, SlidersHorizontal, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
@@ -366,7 +366,7 @@ export function GamePage() {
                       onClick={() => setSelected(player.id)}
                       className={`relative min-h-44 overflow-hidden rounded-2xl border p-5 text-left transition ${
                         !player.isAlive
-                          ? "border-rose-400/25 bg-black/55"
+                          ? "border-rose-300/25 bg-[linear-gradient(145deg,rgba(35,15,22,.88),rgba(9,12,18,.94))]"
                           : selected === player.id
                             ? "border-rose-400/50 bg-rose-500/[.11] shadow-[0_0_0_1px_rgba(251,113,133,.08)]"
                             : "border-white/[.06] bg-white/[.025] hover:border-white/[.14] hover:bg-white/[.04]"
@@ -374,10 +374,10 @@ export function GamePage() {
                     >
                       <span className="flex items-start gap-3">
                         <span className={`avatar h-16 w-16 shrink-0 rounded-2xl text-sm font-black ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : "border-slate-300/15 bg-slate-300/[.06] text-slate-100"}`}>
-                          {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={27} />}
+                          {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={27} />}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className={`block truncate text-sm font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                          <span className={`block truncate text-sm font-bold ${!player.isAlive ? "text-slate-300" : ""}`}>{player.nickname}</span>
                           <span className="mt-1 flex flex-wrap items-center gap-1.5">
                             {player.id === session?.playerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
                             {player.id === room.ownerPlayerId && <Crown size={12} className="text-amber-300" />}
@@ -725,10 +725,10 @@ function VoteResultPanel({
             <div key={player.id} className={`min-h-32 rounded-2xl border p-4 ${player.isAlive ? "border-slate-400/10 bg-slate-300/[.035]" : "border-rose-400/20 bg-rose-950/30"}`}>
               <div className="flex items-center gap-3">
                 <span className={`avatar h-9 w-9 shrink-0 text-[10px] font-bold ${!player.isAlive ? "border-rose-400/25 bg-rose-500/10 text-rose-300" : ""}`}>
-                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <CircleX size={18} />}
+                  {player.isAlive ? player.nickname.slice(0, 2).toUpperCase() : <Skull size={18} />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-sm font-semibold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</span>
+                  <span className={`block truncate text-sm font-semibold ${!player.isAlive ? "text-slate-300" : ""}`}>{player.nickname}</span>
                   <span className="mt-0.5 block text-[10px] text-mist">{count} oy</span>
                 </span>
                 <span className="font-display text-xl text-amber-200">{count}</span>
@@ -819,7 +819,7 @@ function PlayerBoard({
               className={`player-card relative min-h-52 overflow-hidden rounded-2xl border p-5 ${
                 player.isAlive
                   ? "border-slate-400/15 bg-slate-300/[.04]"
-                  : "border-rose-400/25 bg-rose-950/35 text-mist"
+                  : "border-rose-300/25 bg-[linear-gradient(145deg,rgba(40,16,24,.84),rgba(8,12,18,.92))] text-mist"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -833,7 +833,7 @@ function PlayerBoard({
                     : <span className="rounded-full border border-rose-400/25 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300">Öldü</span>}
                 </div>
               </div>
-              <h3 className={`mt-7 truncate text-xl font-bold ${!player.isAlive ? "line-through decoration-rose-400 decoration-2" : ""}`}>{player.nickname}</h3>
+              <h3 className={`mt-7 truncate text-xl font-bold ${!player.isAlive ? "text-slate-300" : ""}`}>{player.nickname}</h3>
               <div className="mt-3 flex min-h-6 flex-wrap items-center gap-2">
                 {player.id === currentPlayerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
                 {player.connected === false && <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200">Bağlantı koptu</span>}
@@ -854,15 +854,14 @@ function PlayerBoard({
 
 function DeadMark() {
   return (
-    <span className="pointer-events-none absolute inset-0 z-10 bg-slate-950/55 backdrop-grayscale" aria-hidden="true">
-      <span className="absolute right-3 top-3 rounded-full border border-rose-300/25 bg-rose-950/80 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-200">
-        Öldü
+    <span className="dead-player-mark pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-[inherit]" aria-hidden="true">
+      <span className="absolute -bottom-8 -right-5 text-rose-100/[.09]">
+        <Skull size={126} strokeWidth={1.25} />
       </span>
-      <span className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-rose-300/25 bg-black/70 text-slate-200 shadow-[0_0_30px_rgba(159,18,57,.28)]">
-        <Skull size={30} />
-        <span className="absolute h-1 w-20 rotate-[-36deg] rounded-full bg-rose-500/90 shadow-[0_0_10px_rgba(244,63,94,.45)]" />
-        <span className="absolute h-1 w-20 rotate-[36deg] rounded-full bg-rose-500/90 shadow-[0_0_10px_rgba(244,63,94,.45)]" />
+      <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-rose-200/25 bg-[#32121a]/90 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[.16em] text-rose-100 shadow-[0_6px_18px_rgba(0,0,0,.35)]">
+        <Skull size={12} /> Elendi
       </span>
+      <span className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-rose-500/65 to-transparent" />
     </span>
   );
 }

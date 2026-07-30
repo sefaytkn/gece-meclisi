@@ -442,6 +442,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: inset 0 1px rgba(255, 255, 255, .025), 0 16px 32px rgba(0, 0, 0, .16);
 }
 
+.dead-player-mark {
+  background:
+    linear-gradient(115deg, rgba(5, 8, 13, .15), rgba(45, 12, 22, .28)),
+    linear-gradient(to bottom, transparent 54%, rgba(3, 6, 10, .34));
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, .05);
+  backdrop-filter: grayscale(.72) saturate(.62);
+}
+
 .game-watermark {
   position: fixed;
   z-index: -1;
