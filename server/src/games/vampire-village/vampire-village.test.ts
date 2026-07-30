@@ -200,15 +200,20 @@ describe("gece, oy ve sohbet kuralları", () => {
     });
   });
 
-  it("eşit oylarda NO_ELIMINATION kuralıyla kimseyi elemez", () => {
-    const engine = startedEngine();
-    engine.advancePhase();
-    engine.advancePhase();
-    const alive = players.map((player) => engine.getInternalPlayer(player.id)!);
-    engine.handleAction(alive[0]!.id, { type: "VOTE", targetId: alive[1]!.id });
-    engine.handleAction(alive[1]!.id, { type: "VOTE", targetId: alive[0]!.id });
-    engine.advancePhase();
-    expect(alive.every((player) => engine.getInternalPlayer(player.id)?.isAlive)).toBe(true);
+  it("eşit oylarda oda ayarından bağımsız olarak kimseyi elemez ve sonraki geceye ilerler", () => {
+    for (const votingTieRule of ["NO_ELIMINATION", "REVOTE", "RANDOM"] as const) {
+      const engine = new VampireVillageEngine(players, settings({ votingTieRule }));
+      engine.start();
+      engine.advancePhase();
+      engine.advancePhase();
+      engine.advancePhase();
+      engine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[1]!.id });
+      engine.handleAction(players[1]!.id, { type: "VOTE", targetId: players[0]!.id });
+      expect(engine.advancePhase()).toBe("ROUND_RESULT");
+      expect(players.every((player) => engine.getInternalPlayer(player.id)?.isAlive)).toBe(true);
+      expect(engine.getPublicState().lastResult).toContain("Oylar eşit çıktı");
+      expect(engine.advancePhase()).toBe("NIGHT");
+    }
   });
 
   it("oylamayı geç seçeneğini oy olarak kabul eder ve kimseyi elemez", () => {

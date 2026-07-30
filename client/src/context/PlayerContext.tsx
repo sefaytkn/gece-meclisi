@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { connectSocket } from "../services/socket";
 
 const PLAYER_NAME_KEY = "gece-meclisi:player-name";
 
@@ -20,6 +21,10 @@ function readNickname() {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [nickname, setNicknameState] = useState(readNickname);
+
+  useEffect(() => {
+    if (nickname) connectSocket(nickname);
+  }, [nickname]);
 
   const setNickname = (value: string) => {
     const normalized = normalizeNickname(value);

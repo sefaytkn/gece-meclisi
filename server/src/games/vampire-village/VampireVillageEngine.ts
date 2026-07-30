@@ -135,13 +135,7 @@ export class VampireVillageEngine implements GameEngine {
       this.lastVoteTally = [];
       this.lastResult = "Kasaba kararını vermek için oylamaya geçti.";
     } else if (this.phase === "DAY_VOTING") {
-      const resolution = resolveVotes(this.votes, this.settings.votingTieRule);
-      if (resolution.requiresRevote) {
-        this.votes.clear();
-        this.lastVoteTally = [];
-        this.lastResult = "Oylar eşit çıktı. Oylama tekrarlanıyor.";
-        return this.phase;
-      }
+      const resolution = resolveVotes(this.votes);
       const tally = new Map<string, string[]>();
       this.votes.forEach((targetId, voterId) => {
         const voters = tally.get(targetId) ?? [];
@@ -159,6 +153,8 @@ export class VampireVillageEngine implements GameEngine {
         eliminated.eliminationRound = this.round;
         eliminated.deathCause = "VOTE";
         this.lastResult = `${eliminated.nickname} kasabanın kararıyla elendi.`;
+      } else if (resolution.tiedIds.length > 1) {
+        this.lastResult = "Oylar eşit çıktı. Kimse elenmedi; kasaba bir sonraki geceye hazırlanıyor.";
       } else {
         this.lastResult = "Oylama sonucunda kimse elenmedi.";
       }

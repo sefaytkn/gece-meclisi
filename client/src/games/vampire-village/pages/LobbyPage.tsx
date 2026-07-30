@@ -25,6 +25,7 @@ export function LobbyPage() {
   const [inviteCopied, setInviteCopied] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [startError, setStartError] = useState("");
   const [draftMaxPlayers, setDraftMaxPlayers] = useState<number | null>(null);
   const [draftDurations, setDraftDurations] = useState<Record<DurationKey, number> | null>(null);
   const busyRef = useRef(false);
@@ -34,6 +35,19 @@ export function LobbyPage() {
   const isOwner = room?.ownerPlayerId === session?.playerId;
   const everyoneReady = Boolean(room?.players.length && room.players.every((player) => player.isReady));
   const inviteUrl = `${window.location.origin}/rooms/join?code=${room?.code ?? code}`;
+  const notReadyPlayers = room?.players.filter((player) => !player.isReady) ?? [];
+  const startBlockReason =
+    connectionState !== "connected"
+      ? "Sunucuyla bağlantı kurulmadan oyun başlatılamaz."
+      : !room
+        ? "Oda bilgileri henüz yükleniyor."
+        : room.players.length < 4
+          ? `Oyunu başlatmak için en az 4 oyuncu gerekir. Şu anda ${room.players.length} oyuncu var.`
+          : !everyoneReady
+            ? `Hazır olmayan oyuncular: ${notReadyPlayers.map((player) => player.nickname).join(", ")}.`
+            : !room.roleValidation.valid
+              ? room.roleValidation.errors[0]?.message ?? "Rol dağılımı oyuncu sayısıyla uyumlu değil."
+              : "";
 
   useEffect(() => {
     if (room?.status === "PLAYING") navigate(`/rooms/${room.code}/game`, { replace: true });
@@ -53,6 +67,10 @@ export function LobbyPage() {
     room?.settings.discussionSeconds,
     room?.settings.votingSeconds
   ]);
+
+  useEffect(() => {
+    setStartError("");
+  }, [startBlockReason]);
 
   const run = async (action: () => Promise<unknown>) => {
     if (busyRef.current || connectionState !== "connected") return;
@@ -102,6 +120,14 @@ export function LobbyPage() {
       clearRoomSession(code);
       navigate("/");
     });
+  };
+
+  const startGame = () => {
+    if (startBlockReason) {
+      setStartError(startBlockReason);
+      return;
+    }
+    void run(() => emitAck("room:start"));
   };
 
   if (!room) {
@@ -365,13 +391,29 @@ export function LobbyPage() {
           </section>
 
           {isOwner && (
-            <button
-              className="btn-primary w-full justify-center py-3"
-              disabled={busy || connectionState !== "connected" || !everyoneReady || !room.roleValidation.valid || room.players.length < 4}
-              onClick={() => void run(() => emitAck("room:start"))}
-            >
-              <Play size={17} /> Geceyi başlat
-            </button>
+            <div>
+              <button
+                className="btn-primary w-full justify-center py-3"
+                disabled={busy}
+                onClick={startGame}
+                aria-describedby={startBlockReason ? "start-game-reason" : undefined}
+              >
+                <Play size={17} /> {busy ? "Oyun başlatılıyor..." : "Geceyi başlat"}
+              </button>
+              {startBlockReason && (
+                <p
+                  id="start-game-reason"
+                  className={`mt-3 rounded-xl border px-3 py-2.5 text-xs leading-5 ${
+                    startError
+                      ? "border-rose-400/20 bg-rose-500/[.07] text-rose-200"
+                      : "border-amber-400/15 bg-amber-400/[.05] text-amber-100"
+                  }`}
+                  role={startError ? "alert" : "status"}
+                >
+                  {startError || startBlockReason}
+                </p>
+              )}
+            </div>
           )}
           {!isOwner && <p className="text-center text-xs text-mist">Oyunu oda sahibi başlatacak.</p>}
         </div>

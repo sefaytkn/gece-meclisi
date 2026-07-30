@@ -1,5 +1,3 @@
-import { randomInt } from "node:crypto";
-
 export const SKIP_VOTE_ID = "__SKIP__";
 
 export interface VoteResolution {
@@ -9,8 +7,7 @@ export interface VoteResolution {
 }
 
 export function resolveVotes(
-  votes: ReadonlyMap<string, string>,
-  tieRule: "NO_ELIMINATION" | "REVOTE" | "RANDOM"
+  votes: ReadonlyMap<string, string>
 ): VoteResolution {
   if (votes.size === 0) return { eliminatedId: null, tiedIds: [], requiresRevote: false };
   const totals = new Map<string, number>();
@@ -21,8 +18,5 @@ export function resolveVotes(
     return { eliminatedId: null, tiedIds, requiresRevote: false };
   }
   if (tiedIds.length === 1) return { eliminatedId: tiedIds[0]!, tiedIds: [], requiresRevote: false };
-  if (tieRule === "RANDOM") {
-    return { eliminatedId: tiedIds[randomInt(0, tiedIds.length)]!, tiedIds, requiresRevote: false };
-  }
-  return { eliminatedId: null, tiedIds, requiresRevote: tieRule === "REVOTE" };
+  return { eliminatedId: null, tiedIds, requiresRevote: false };
 }
