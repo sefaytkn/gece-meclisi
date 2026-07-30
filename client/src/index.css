@@ -530,6 +530,131 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   50% { box-shadow: 0 18px 52px rgba(0, 0, 0, .28), inset 0 0 28px rgba(244, 63, 94, .07); }
 }
 
+.victory-screen {
+  isolation: isolate;
+  color: #fff;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: cover;
+}
+
+.victory-screen::before,
+.victory-screen::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.victory-screen::before {
+  z-index: -2;
+  background: inherit;
+  background-position: center bottom;
+  background-size: cover;
+  filter: saturate(.82) contrast(1.05);
+}
+
+.victory-screen::after {
+  z-index: -1;
+}
+
+.victory-screen-vampires {
+  background-image: url("/backgrounds/village-night.webp");
+}
+
+.victory-screen-vampires::after {
+  background:
+    radial-gradient(circle at 50% 15%, rgba(164, 18, 52, .54), transparent 38rem),
+    radial-gradient(circle at 50% 110%, rgba(225, 29, 72, .38), transparent 42rem),
+    linear-gradient(to bottom, rgba(7, 2, 7, .38), rgba(16, 2, 7, .87));
+}
+
+.victory-screen-village {
+  background-image: url("/backgrounds/village-day.webp");
+}
+
+.victory-screen-village::after {
+  background:
+    radial-gradient(circle at 50% 5%, rgba(255, 220, 132, .38), transparent 35rem),
+    linear-gradient(to bottom, rgba(20, 24, 27, .22), rgba(18, 12, 6, .76));
+}
+
+.victory-content {
+  animation: victory-content-in .9s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.victory-emblem {
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(5, 7, 11, .62);
+  box-shadow: 0 0 70px rgba(255, 255, 255, .12), inset 0 1px rgba(255, 255, 255, .08);
+  backdrop-filter: blur(12px);
+}
+
+.victory-screen-vampires .victory-emblem {
+  color: #fda4af;
+  border-color: rgba(251, 113, 133, .32);
+  box-shadow: 0 0 80px rgba(190, 18, 60, .42), inset 0 1px rgba(255, 255, 255, .08);
+}
+
+.victory-screen-village .victory-emblem {
+  color: #fde68a;
+  border-color: rgba(253, 230, 138, .32);
+  box-shadow: 0 0 80px rgba(245, 158, 11, .3), inset 0 1px rgba(255, 255, 255, .08);
+}
+
+.victory-title {
+  text-wrap: balance;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, .62);
+}
+
+.victory-screen-vampires .victory-title {
+  color: #fecdd3;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, .72), 0 0 55px rgba(225, 29, 72, .3);
+}
+
+.victory-screen-village .victory-title {
+  color: #fff7d6;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, .65), 0 0 55px rgba(245, 158, 11, .22);
+}
+
+.victory-roster {
+  border-color: rgba(255, 255, 255, .12);
+  background: rgba(5, 8, 13, .78);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .42), inset 0 1px rgba(255, 255, 255, .045);
+  backdrop-filter: blur(20px);
+}
+
+.victory-player-card {
+  min-height: 5.25rem;
+  padding: .9rem;
+  border-color: rgba(255, 255, 255, .1);
+  background: rgba(8, 11, 16, .72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+  backdrop-filter: blur(12px);
+}
+
+.victory-player-card-compact {
+  min-height: 4.5rem;
+  padding: .75rem;
+}
+
+.victory-screen-vampires .victory-player-card-winner {
+  border-color: rgba(251, 113, 133, .3);
+  background: linear-gradient(135deg, rgba(91, 14, 35, .72), rgba(12, 10, 16, .84));
+  box-shadow: 0 12px 36px rgba(105, 8, 31, .24), inset 0 1px rgba(255, 255, 255, .04);
+}
+
+.victory-screen-village .victory-player-card-winner {
+  border-color: rgba(253, 230, 138, .27);
+  background: linear-gradient(135deg, rgba(82, 61, 20, .64), rgba(11, 13, 15, .84));
+  box-shadow: 0 12px 36px rgba(120, 78, 8, .2), inset 0 1px rgba(255, 255, 255, .04);
+}
+
+@keyframes victory-content-in {
+  from { opacity: 0; transform: translateY(18px) scale(.985); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
 .game-watermark {
   position: fixed;
   z-index: -1;

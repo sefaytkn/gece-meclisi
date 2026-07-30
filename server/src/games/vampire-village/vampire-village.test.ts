@@ -325,6 +325,9 @@ describe("kazanan kontrolü", () => {
     engine.handleAction(villagers[1]!.id, { type: "VOTE", targetId: vampire.id });
     expect(engine.advancePhase()).toBe("FINISHED");
     expect(engine.getPublicState().players.every((item) => !("role" in item))).toBe(true);
+    for (const participant of freePlayers) {
+      expect(engine.getPrivateState(participant.id).revealedRoles).toHaveLength(freePlayers.length);
+    }
   });
 
   it("Vampir kalmadığında köyü kazanan ilan eder", () => {

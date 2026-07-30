@@ -599,44 +599,132 @@ export function GamePage() {
       )}
 
       {game.phase === "FINISHED" && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-ink/90 p-5 backdrop-blur-xl">
-          <div className="panel w-full max-w-2xl p-7 text-center sm:p-10">
-            {game.winner === "VILLAGE" ? <Sun className="mx-auto text-amber-300" size={36} /> : <Skull className="mx-auto text-rose-300" size={36} />}
-            <p className="eyebrow mt-5">OYUN SONA ERDİ</p>
-            <h2 className="mt-3 font-display text-4xl font-semibold">{game.winner === "VILLAGE" ? "Kasaba kazandı" : "Vampirler kazandı"}</h2>
-            <p className="mt-3 text-sm text-mist">{game.round} tur sonunda oyun tamamlandı.</p>
-            {lastVoteTally.length > 0 && (
-              <div className="mt-6 rounded-2xl border border-amber-300/10 bg-amber-300/[.035] p-4 text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-200">SON OYLAMA</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {lastVoteTally.map((item) => (
-                    <span key={item.targetId} className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5 text-xs">
-                      {item.targetId === SKIP_VOTE_ID ? "Geç" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="mt-7 grid gap-2 sm:grid-cols-2">
-              {game.players.map((player) => (
-                <div key={player.id} className="flex items-center justify-between rounded-xl border border-white/[.06] bg-white/[.025] p-3 text-left">
-                  <div><p className="text-sm font-semibold">{player.nickname}</p><p className="mt-0.5 text-[10px] text-mist">{player.isAlive ? "Hayatta kaldı" : `${player.eliminationRound}. turda elendi`}</p></div>
-                  <span className="text-xs font-bold text-mist">{player.isAlive ? "Hayatta" : "Elendi"}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-              {room.ownerPlayerId === session?.playerId && (
-                <button className="btn-primary justify-center" onClick={() => void emitAck("room:rematch").then(() => navigate(`/rooms/${code}/lobby`))}>Tekrar oyna</button>
-              )}
-              <button className="btn-secondary justify-center" onClick={() => navigate(`/rooms/${code}/lobby`)}>Odaya dön</button>
-              <button className="btn-ghost justify-center" onClick={() => void leave()}>Odadan ayrıl</button>
-            </div>
-          </div>
-        </div>
+        <VictoryScreen
+          winner={game.winner ?? "VILLAGE"}
+          round={game.round}
+          players={game.players}
+          revealedRoleByPlayer={revealedRoleByPlayer}
+          isOwner={room.ownerPlayerId === session?.playerId}
+          onRematch={() => void emitAck("room:rematch").then(() => navigate(`/rooms/${code}/lobby`))}
+          onReturn={() => navigate(`/rooms/${code}/lobby`)}
+          onLeave={() => void leave()}
+        />
       )}
       </div>
     </PageShell>
+  );
+}
+
+function VictoryScreen({
+  winner,
+  round,
+  players,
+  revealedRoleByPlayer,
+  isOwner,
+  onRematch,
+  onReturn,
+  onLeave
+}: {
+  winner: "VILLAGE" | "VAMPIRES";
+  round: number;
+  players: GamePlayer[];
+  revealedRoleByPlayer: Map<string, Role>;
+  isOwner: boolean;
+  onRematch: () => void;
+  onReturn: () => void;
+  onLeave: () => void;
+}) {
+  const vampiresWon = winner === "VAMPIRES";
+  const winners = players.filter((player) => {
+    const role = revealedRoleByPlayer.get(player.id);
+    return role ? (vampiresWon ? role === "VAMPIRE" : role !== "VAMPIRE") : false;
+  });
+
+  return (
+    <div className={`victory-screen victory-screen-${vampiresWon ? "vampires" : "village"} fixed inset-0 z-[90] overflow-y-auto`} role="dialog" aria-live="assertive" aria-label={vampiresWon ? "Vampirler kazandı" : "Köylüler kazandı"}>
+      <div className="victory-content relative z-10 mx-auto flex min-h-full w-full max-w-7xl flex-col items-center px-4 py-10 text-center sm:px-6 sm:py-14">
+        <span className="victory-emblem grid h-20 w-20 place-items-center rounded-full sm:h-24 sm:w-24">
+          {vampiresWon ? <Skull size={44} /> : <Sun size={46} />}
+        </span>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[.4em] sm:text-xs">
+          {vampiresWon ? "GECE KASABAYI ELE GEÇİRDİ" : "GÜNEŞ KASABANIN ÜZERİNE DOĞDU"}
+        </p>
+        <h2 className="victory-title mt-3 font-display text-5xl font-semibold sm:text-7xl lg:text-8xl">
+          {vampiresWon ? "Vampirler kazandı" : "Köylüler kazandı"}
+        </h2>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
+          {vampiresWon
+            ? "Vampirler gölgelerden çıktı ve kasabanın kontrolünü ele geçirdi."
+            : "Kasaba bütün vampirleri ortaya çıkardı. Köy bir geceyi daha atlattı."}
+          {" "}{round} tur süren mücadele sona erdi.
+        </p>
+
+        <section className="mt-9 w-full max-w-5xl">
+          <p className="text-[10px] font-black uppercase tracking-[.3em] text-white/55">KAZANAN TAKIM</p>
+          <div className={`mx-auto mt-4 grid max-w-4xl gap-3 ${winners.length === 1 ? "max-w-xs" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+            {winners.map((player) => (
+              <VictoryPlayerCard key={player.id} player={player} role={revealedRoleByPlayer.get(player.id)} winner />
+            ))}
+          </div>
+        </section>
+
+        <section className="victory-roster mt-8 w-full max-w-6xl rounded-3xl border p-5 sm:p-7">
+          <div className="flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.3em] text-white/45">ROLLER AÇIKLANDI</p>
+              <h3 className="mt-2 font-display text-2xl font-semibold text-white">Bu gece kasabada kimler vardı?</h3>
+            </div>
+            <p className="text-xs text-white/50">Vampirler ve kasaba halkı artık ortaya çıktı.</p>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {players.map((player) => {
+              const role = revealedRoleByPlayer.get(player.id);
+              const onWinningTeam = role ? (vampiresWon ? role === "VAMPIRE" : role !== "VAMPIRE") : false;
+              return <VictoryPlayerCard key={player.id} player={player} role={role} winner={onWinningTeam} compact />;
+            })}
+          </div>
+        </section>
+
+        <div className="mt-8 flex w-full max-w-3xl flex-col justify-center gap-3 sm:flex-row">
+          {isOwner && <button className="btn-primary justify-center" onClick={onRematch}>Tekrar oyna</button>}
+          <button className="btn-secondary justify-center" onClick={onReturn}>Odaya dön</button>
+          <button className="btn-ghost justify-center text-white/70" onClick={onLeave}>Odadan ayrıl</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VictoryPlayerCard({
+  player,
+  role,
+  winner,
+  compact = false
+}: {
+  player: GamePlayer;
+  role?: Role;
+  winner: boolean;
+  compact?: boolean;
+}) {
+  const theme = role ? roleTheme[role] : null;
+  const RoleIcon = theme?.icon ?? UsersRound;
+
+  return (
+    <article className={`victory-player-card ${winner ? "victory-player-card-winner" : ""} ${compact ? "victory-player-card-compact" : ""} flex items-center gap-3 rounded-2xl border text-left`}>
+      <span className={`grid shrink-0 place-items-center rounded-xl border ${compact ? "h-11 w-11" : "h-14 w-14"} ${theme?.className ?? "border-white/10 bg-white/[.04] text-white/60"}`}>
+        <RoleIcon size={compact ? 20 : 25} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold text-white">{player.nickname}</span>
+        <span className="mt-1 flex flex-wrap items-center gap-2">
+          <span className={`text-[9px] font-black uppercase tracking-wider ${role === "VAMPIRE" ? "text-rose-300" : role === "DOCTOR" ? "text-emerald-300" : "text-sky-200"}`}>
+            {role ? roleNames[role] : "Rol açıklanıyor"}
+          </span>
+          <span className="text-[9px] text-white/40">{player.isAlive ? "Hayatta" : "Elendi"}</span>
+        </span>
+      </span>
+      {winner && <Crown size={16} className="shrink-0 text-amber-300" />}
+    </article>
   );
 }
 

@@ -271,7 +271,7 @@ export class VampireVillageEngine implements GameEngine {
       currentVote: this.votes.get(player.id) ?? null,
       deathCause: player.deathCause,
       revealedRoles:
-        !player.isAlive && this.settings.deadCanSeeRoles
+        this.phase === "FINISHED" || (!player.isAlive && this.settings.deadCanSeeRoles)
           ? [...this.players.values()].map((candidate) => ({
               playerId: candidate.id,
               nickname: candidate.nickname,
