@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { connectSocket, emitAck, socket } from "../services/socket";
 import { joinRoomOnce } from "../services/roomJoin";
 import { getRoomSession, saveRoomSession } from "../services/roomSession";
-import type { ChatMessage, GameState, PrivateState, Room } from "../types";
+import type { ChatMessage, GameState, PlayerElimination, PrivateState, Room } from "../types";
 
 export function useRoomSocket(code: string) {
   const [room, setRoom] = useState<Room | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [privateState, setPrivateState] = useState<PrivateState | null>(null);
+  const [elimination, setElimination] = useState<PlayerElimination | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState("");
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "offline">(
@@ -19,6 +20,7 @@ export function useRoomSocket(code: string) {
     const onRoom = (next: Room) => setRoom(next);
     const onGame = (next: GameState) => setGame(next);
     const onPrivate = (next: PrivateState) => setPrivateState(next);
+    const onElimination = (next: PlayerElimination) => setElimination(next);
     const onMessage = (message: ChatMessage) => setMessages((current) => [...current.slice(-99), message]);
     const onConnect = () => {
       setConnectionState("connected");
@@ -40,6 +42,7 @@ export function useRoomSocket(code: string) {
     socket.on("game:started", onGame);
     socket.on("game:ended", onGame);
     socket.on("game:private-role", onPrivate);
+    socket.on("game:player-eliminated", onElimination);
     socket.on("chat:message", onMessage);
     socket.on("chat:system-message", onMessage);
     socket.on("connect", onConnect);
@@ -67,6 +70,7 @@ export function useRoomSocket(code: string) {
       socket.off("game:started", onGame);
       socket.off("game:ended", onGame);
       socket.off("game:private-role", onPrivate);
+      socket.off("game:player-eliminated", onElimination);
       socket.off("chat:message", onMessage);
       socket.off("chat:system-message", onMessage);
       socket.off("connect", onConnect);
@@ -81,5 +85,5 @@ export function useRoomSocket(code: string) {
     await emitAck("chat:send", { channel, message });
   }, []);
 
-  return { room, game, privateState, messages, error, session, sendChat, connectionState };
+  return { room, game, privateState, elimination, messages, error, session, sendChat, connectionState };
 }

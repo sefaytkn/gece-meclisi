@@ -103,16 +103,27 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
       activeRoom.phaseEndsAt = null;
       const currentState = activeRoom.engine?.getPublicState();
       const eliminated = currentState?.players.find((player) => previousAlive.has(player.id) && !player.isAlive);
-      if (eliminated) io.to(code).emit("game:player-eliminated", eliminated);
+      const eliminatedInternal = eliminated ? activeRoom.engine?.getInternalPlayer(eliminated.id) : null;
+      const eliminationEvent = eliminated && eliminatedInternal?.deathCause
+        ? {
+            id: `${currentState?.round ?? 0}:${eliminated.id}:${eliminatedInternal.deathCause}`,
+            playerId: eliminated.id,
+            nickname: eliminated.nickname,
+            cause: eliminatedInternal.deathCause,
+            round: currentState?.round ?? 0
+          }
+        : null;
       if (nextPhase === "FINISHED") {
         activeRoom.status = "FINISHED";
         io.to(code).emit("game:ended", currentState);
         broadcastRoom(code);
         broadcastGame(code);
+        if (eliminationEvent) io.to(code).emit("game:player-eliminated", eliminationEvent);
         return;
       }
       if (nextPhase === "ROUND_RESULT") io.to(code).emit("game:round-result", currentState);
       schedulePhase(code);
+      if (eliminationEvent) io.to(code).emit("game:player-eliminated", eliminationEvent);
     } catch (error) {
       logger.error("Game phase completion failed", { code, error });
       timers.delete(code);

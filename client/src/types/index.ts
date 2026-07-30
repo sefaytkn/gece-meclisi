@@ -91,6 +91,14 @@ export interface PrivateState {
   revealedRoles: { playerId: string; nickname: string; role: Role; isAlive: boolean }[];
 }
 
+export interface PlayerElimination {
+  id: string;
+  playerId: string;
+  nickname: string;
+  cause: "VAMPIRE" | "VOTE" | "DISCONNECTED";
+  round: number;
+}
+
 export interface ChatMessage {
   id: string;
   username: string;

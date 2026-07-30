@@ -9,7 +9,7 @@ import { useRoomSocket } from "../../../hooks/useRoomSocket";
 import { configureGameAudio, playGameSound, unlockGameAudio } from "../../../services/gameAudio";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
-import type { ChatMessage, GamePlayer, GameState, Role } from "../../../types";
+import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role } from "../../../types";
 
 const phaseNames = {
   WAITING: "Bekleniyor",
@@ -38,13 +38,13 @@ const SKIP_VOTE_ID = "__SKIP__";
 export function GamePage() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
-  const { room, game, privateState, messages, error, session, sendChat, connectionState } = useRoomSocket(code);
+  const { room, game, privateState, elimination, messages, error, session, sendChat, connectionState } = useRoomSocket(code);
   const [selected, setSelected] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionPending, setActionPending] = useState(false);
   const [roleVisible, setRoleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [deathEffectVisible, setDeathEffectVisible] = useState(false);
+  const [visibleElimination, setVisibleElimination] = useState<PlayerElimination | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
   const [soundVolume, setSoundVolume] = useState(() => {
     const storedVolume = Number(localStorage.getItem("gece:sound-volume"));
@@ -52,7 +52,6 @@ export function GamePage() {
   });
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
   const [atmosphereMode, setAtmosphereMode] = useState<VillageAtmosphereMode>("DAY");
-  const wasAliveRef = useRef<boolean | null>(null);
   const previousPhaseRef = useRef<GameState["phase"] | null>(null);
   const playedTimeWarningRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
@@ -144,31 +143,22 @@ export function GamePage() {
   }, [game?.phase, game?.phaseEndsAt, game?.round, seconds]);
 
   useEffect(() => {
-    if (!privateState) return;
-    if (wasAliveRef.current === null) {
-      wasAliveRef.current = privateState.isAlive;
-      return;
-    }
-
-    const wasEliminated = wasAliveRef.current && !privateState.isAlive;
-    wasAliveRef.current = privateState.isAlive;
-    if (!wasEliminated) return;
-
-    setDeathEffectVisible(true);
+    if (!elimination) return;
+    setVisibleElimination(elimination);
     try {
       playGameSound(
-        privateState.deathCause === "VAMPIRE"
+        elimination.cause === "VAMPIRE"
           ? "VAMPIRE_ATTACK"
-          : privateState.deathCause === "VOTE"
+          : elimination.cause === "VOTE"
             ? "VOTE_EXECUTION"
             : "PLAYER_ELIMINATED"
       );
     } catch {
       // The visual effect still works when the browser blocks audio playback.
     }
-    const timeout = window.setTimeout(() => setDeathEffectVisible(false), 2200);
+    const timeout = window.setTimeout(() => setVisibleElimination(null), 3200);
     return () => window.clearTimeout(timeout);
-  }, [privateState?.deathCause, privateState?.isAlive]);
+  }, [elimination?.id]);
 
   const toggleSound = () => {
     setSoundEnabled((enabled) => {
@@ -552,8 +542,8 @@ export function GamePage() {
         </div>
       )}
 
-      {deathEffectVisible && (
-        <DeathEffect cause={privateState.deathCause} />
+      {visibleElimination && (
+        <DeathEffect elimination={visibleElimination} />
       )}
 
       {game.phase === "FINISHED" && (
@@ -598,8 +588,9 @@ export function GamePage() {
   );
 }
 
-function DeathEffect({ cause }: { cause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | null }) {
-  const vampireAttack = cause === "VAMPIRE";
+function DeathEffect({ elimination }: { elimination: PlayerElimination }) {
+  const vampireAttack = elimination.cause === "VAMPIRE";
+  const voteExecution = elimination.cause === "VOTE";
 
   return (
     <div className="death-overlay fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/75 p-6" role="alert" aria-live="assertive">
@@ -610,11 +601,23 @@ function DeathEffect({ cause }: { cause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | n
         <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
           {vampireAttack ? <Swords size={46} /> : <Skull size={46} />}
         </span>
-        <p className="mt-6 text-xs font-black uppercase tracking-[.38em] text-rose-300">ELENDİN</p>
+        <p className="mt-6 text-xs font-black uppercase tracking-[.38em] text-rose-300">
+          {vampireAttack ? "GECE KATLİAMI" : voteExecution ? "KASABANIN KARARI" : "OYUNCU ELENDİ"}
+        </p>
         <h2 className="mt-3 font-display text-4xl font-semibold text-white sm:text-6xl">
-          {vampireAttack ? "Vampirler seni katletti." : cause === "VOTE" ? "Kasaba kararını verdi." : "Gecen burada sona erdi."}
+          {vampireAttack
+            ? `${elimination.nickname} dün gece katledildi.`
+            : voteExecution
+              ? `${elimination.nickname} köyde istenmiyordu.`
+              : `${elimination.nickname} artık kasabada değil.`}
         </h2>
-        <p className="mt-3 text-sm text-rose-100/65">Artık ölüler meclisindesin.</p>
+        <p className="mt-3 text-sm text-rose-100/65">
+          {vampireAttack
+            ? "Vampirler gecenin karanlığında yine iz bıraktı."
+            : voteExecution
+              ? `${elimination.nickname}, kasabanın oylarıyla asıldı.`
+              : "Kasaba bir oyuncusunu daha kaybetti."}
+        </p>
       </div>
     </div>
   );
