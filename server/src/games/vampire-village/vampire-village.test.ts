@@ -230,6 +230,21 @@ describe("gece, oy ve sohbet kuralları", () => {
     ]);
   });
 
+  it("geç oyları bir oyuncunun oylarıyla eşitse oyuncuyu elemez ve geceye ilerler", () => {
+    const engine = startedEngine();
+    engine.advancePhase();
+    engine.advancePhase();
+    engine.handleAction(players[0]!.id, { type: "VOTE", targetId: players[4]!.id });
+    engine.handleAction(players[1]!.id, { type: "VOTE", targetId: players[4]!.id });
+    engine.handleAction(players[2]!.id, { type: "VOTE", targetId: SKIP_VOTE_ID });
+    engine.handleAction(players[3]!.id, { type: "VOTE", targetId: SKIP_VOTE_ID });
+
+    expect(engine.advancePhase()).toBe("ROUND_RESULT");
+    expect(engine.getInternalPlayer(players[4]!.id)?.isAlive).toBe(true);
+    expect(engine.getPublicState().lastResult).toContain("Kimse elenmedi");
+    expect(engine.advancePhase()).toBe("NIGHT");
+  });
+
   it("oylama sonunda açık odada simgeler için seçmenleri, gizli odada yalnızca adetleri saklar", () => {
     const publicEngine = new VampireVillageEngine(players, settings({ voteVisibility: "PUBLIC" }));
     publicEngine.start();

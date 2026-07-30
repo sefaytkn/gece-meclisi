@@ -20,7 +20,7 @@ const chatSchema = z.object({
 });
 
 const phaseDurations = {
-  ROLE_REVEAL: 8,
+  ROLE_REVEAL: 10,
   ROUND_RESULT: 7
 } as const;
 

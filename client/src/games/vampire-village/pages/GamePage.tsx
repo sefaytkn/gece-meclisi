@@ -76,7 +76,7 @@ export function GamePage() {
     setSelected("");
     setActionError("");
     setActionPending(false);
-    setRoleVisible(false);
+    setRoleVisible(game?.phase === "ROLE_REVEAL");
   }, [game?.phase, game?.round]);
 
   useEffect(() => {
@@ -415,24 +415,30 @@ export function GamePage() {
                     type="button"
                     disabled={actionLocked}
                     onClick={() => setSelected(SKIP_VOTE_ID)}
-                    className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${
+                    className={`mt-4 flex min-h-16 w-full items-center gap-3 rounded-2xl border p-4 text-left transition ${
                       selected === SKIP_VOTE_ID
-                        ? "border-amber-300/35 bg-amber-300/10 text-amber-100"
-                        : "border-white/[.08] bg-white/[.025] text-mist hover:border-white/[.16] hover:text-white"
+                        ? "border-emerald-300/35 bg-emerald-400/10 text-emerald-100 shadow-[0_0_0_1px_rgba(110,231,183,.08)]"
+                        : "border-white/[.1] bg-white/[.035] text-mist hover:border-emerald-300/25 hover:bg-emerald-400/[.06] hover:text-white"
                     }`}
                   >
-                    <SkipForward size={15} /> Oylamayı geç
-                    {selected === SKIP_VOTE_ID && <Check size={14} className="ml-1" />}
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-300/15 bg-emerald-400/[.08] text-emerald-200">
+                      <SkipForward size={19} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-white">Kimse asılmasın</span>
+                      <span className="mt-1 block text-[11px] leading-4 text-mist">Boş oy ver ve oylamayı geç.</span>
+                    </span>
+                    {selected === SKIP_VOTE_ID && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-white"><Check size={17} /></span>}
                   </button>
                 )}
                 {selected && (
                   <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-500/[.05] px-3 py-2 text-xs text-rose-100">
                     <Check size={14} className="shrink-0 text-rose-300" />
-                    <span><strong>{selected === SKIP_VOTE_ID ? "Kimseye oy verme" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
+                    <span><strong>{selected === SKIP_VOTE_ID ? "Kimse asılmasın" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
                   </div>
                 )}
                 <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
-                  {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
+                  {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {selected === SKIP_VOTE_ID ? "Boş oyumu gönder" : privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
                 </button>
               </div>
             </section>
@@ -542,6 +548,14 @@ export function GamePage() {
         </div>
       )}
 
+      {game.phase === "ROLE_REVEAL" && (
+        <OpeningSequenceOverlay
+          role={privateState.role}
+          roleInfo={privateState.roleInfo}
+          seconds={seconds}
+        />
+      )}
+
       {visibleElimination && (
         <DeathEffect elimination={visibleElimination} />
       )}
@@ -559,7 +573,7 @@ export function GamePage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {lastVoteTally.map((item) => (
                     <span key={item.targetId} className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5 text-xs">
-                      {item.targetId === SKIP_VOTE_ID ? "Geç" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
+                      {item.targetId === SKIP_VOTE_ID ? "Kimse asılmasın" : playerNameById.get(item.targetId) ?? "Oyuncu"} · <strong>{item.count}</strong>
                     </span>
                   ))}
                 </div>
@@ -585,6 +599,64 @@ export function GamePage() {
       )}
       </div>
     </PageShell>
+  );
+}
+
+function OpeningSequenceOverlay({
+  role,
+  roleInfo,
+  seconds
+}: {
+  role: Role;
+  roleInfo: { name: string; description: string; ability: string; goal: string };
+  seconds: number;
+}) {
+  const [introStarted, setIntroStarted] = useState(false);
+  useEffect(() => {
+    if (seconds > 0 && seconds <= 3) {
+      setIntroStarted(true);
+    }
+  }, [seconds]);
+  const nightIsStarting = introStarted;
+  const theme = roleTheme[role];
+  const RoleIcon = theme.icon;
+
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-[#030508]/90 p-5 backdrop-blur-md" role="dialog" aria-live="polite" aria-label={nightIsStarting ? "İlk gece başlıyor" : "Rolün açıklandı"}>
+      {nightIsStarting ? (
+        <div key="night-intro" className="opening-sequence-card w-full max-w-2xl text-center">
+          <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-indigo-200/20 bg-indigo-300/[.08] text-indigo-100 shadow-[0_0_80px_rgba(129,140,248,.25)]">
+            <Moon size={47} />
+          </span>
+          <p className="eyebrow mt-7 text-indigo-200">KÖY UYKUYA DALIYOR</p>
+          <h2 className="mt-3 font-display text-5xl font-semibold text-white sm:text-7xl">İlk gece başlıyor.</h2>
+          <p className="mt-4 text-sm text-slate-300">Kapılar kapanıyor, sokaklar sessizleşiyor.</p>
+          <span className="mx-auto mt-7 grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-black/35 font-display text-2xl tabular-nums text-indigo-100">
+            {seconds}
+          </span>
+        </div>
+      ) : (
+        <div key="role-reveal" className={`opening-sequence-card w-full max-w-2xl rounded-3xl border p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,.65)] sm:p-10 ${theme.className}`}>
+          <p className="text-[10px] font-black uppercase tracking-[.35em] opacity-70">BU GECEKİ ROLÜN</p>
+          <span className="mx-auto mt-6 grid h-24 w-24 place-items-center rounded-3xl border border-current/20 bg-black/25">
+            <RoleIcon size={44} />
+          </span>
+          <h2 className="mt-6 font-display text-5xl font-semibold text-white sm:text-7xl">{roleInfo.name}</h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-6 opacity-80">{roleInfo.description}</p>
+          <div className="mx-auto mt-6 grid max-w-xl gap-3 text-left sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">YETENEĞİN</p>
+              <p className="mt-2 text-sm font-semibold text-white">{roleInfo.ability}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">HEDEFİN</p>
+              <p className="mt-2 text-sm font-semibold text-white">{roleInfo.goal}</p>
+            </div>
+          </div>
+          <p className="mt-6 text-xs opacity-60">Rolünü aklında tut. İlk gece birazdan başlayacak.</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -685,7 +757,7 @@ function VoteResultPanel({
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.05] text-mist"><SkipForward size={17} /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Oylamayı geçenler</span>
+              <span className="block text-sm font-semibold">Kimse asılmasın oyları</span>
               <span className="mt-0.5 block text-[10px] text-mist">{skipTally?.count ?? 0} oy</span>
             </span>
             <div className="flex flex-wrap justify-end gap-1">

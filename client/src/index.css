@@ -465,6 +465,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   transform: rotate(-8deg);
 }
 
+.opening-sequence-card {
+  animation: opening-sequence-in .55s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes opening-sequence-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(.96);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 .death-overlay {
   animation: death-fade 3.2s ease both;
 }
