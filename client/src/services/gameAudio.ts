@@ -1,4 +1,5 @@
 export type GameSound =
+  | "SUNSET"
   | "NIGHT_START"
   | "DAY_START"
   | "CLOCK_BELL"
@@ -17,6 +18,9 @@ let soundEnabled = true;
 let soundVolume = 0.18;
 let activeSources = new Set<AudioScheduledSourceNode>();
 let activeOutput: GainNode | null = null;
+let ambientSource: AudioBufferSourceNode | null = null;
+let ambientLfo: OscillatorNode | null = null;
+let ambientOutput: GainNode | null = null;
 
 function getAudioContext() {
   const AudioContextClass = window.AudioContext;
@@ -37,6 +41,25 @@ function stopActiveSound() {
   activeSources.clear();
   activeOutput?.disconnect();
   activeOutput = null;
+}
+
+export function stopGameAmbience() {
+  try {
+    ambientSource?.stop();
+  } catch {
+    // The ambience may already have stopped naturally.
+  }
+  try {
+    ambientLfo?.stop();
+  } catch {
+    // The modulation oscillator may already have stopped.
+  }
+  ambientSource?.disconnect();
+  ambientLfo?.disconnect();
+  ambientOutput?.disconnect();
+  ambientSource = null;
+  ambientLfo = null;
+  ambientOutput = null;
 }
 
 function track(source: AudioScheduledSourceNode) {
@@ -137,7 +160,14 @@ function addNoise(
 export function configureGameAudio(enabled: boolean, volume: number) {
   soundEnabled = enabled;
   soundVolume = Math.min(1, Math.max(0, volume));
-  if (!enabled || soundVolume === 0) stopActiveSound();
+  if (!enabled || soundVolume === 0) {
+    stopActiveSound();
+    stopGameAmbience();
+    return;
+  }
+  if (ambientOutput && sharedContext) {
+    ambientOutput.gain.setTargetAtTime(soundVolume * 0.065, sharedContext.currentTime, 0.08);
+  }
 }
 
 export function unlockGameAudio() {
@@ -145,11 +175,64 @@ export function unlockGameAudio() {
   if (context?.state === "suspended") void context.resume();
 }
 
+export function startNightWind() {
+  if (!soundEnabled || soundVolume === 0 || ambientSource) return;
+  const context = getAudioContext();
+  if (!context) return;
+  if (context.state === "suspended") void context.resume();
+
+  const duration = 5;
+  const frameCount = Math.floor(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+  const channel = buffer.getChannelData(0);
+  let brown = 0;
+  for (let index = 0; index < channel.length; index += 1) {
+    brown = (brown + 0.018 * (Math.random() * 2 - 1)) / 1.018;
+    channel[index] = Math.max(-1, Math.min(1, brown * 3.2));
+  }
+
+  const source = context.createBufferSource();
+  const lowpass = context.createBiquadFilter();
+  const highpass = context.createBiquadFilter();
+  const output = context.createGain();
+  const lfo = context.createOscillator();
+  const lfoDepth = context.createGain();
+
+  source.buffer = buffer;
+  source.loop = true;
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 720;
+  lowpass.Q.value = 0.45;
+  highpass.type = "highpass";
+  highpass.frequency.value = 80;
+  output.gain.setValueAtTime(0.0001, context.currentTime);
+  output.gain.exponentialRampToValueAtTime(Math.max(0.0001, soundVolume * 0.065), context.currentTime + 1.8);
+  lfo.type = "sine";
+  lfo.frequency.value = 0.09;
+  lfoDepth.gain.value = soundVolume * 0.018;
+  lfo.connect(lfoDepth).connect(output.gain);
+  source.connect(lowpass).connect(highpass).connect(output).connect(context.destination);
+
+  ambientSource = source;
+  ambientLfo = lfo;
+  ambientOutput = output;
+  source.start();
+  lfo.start();
+}
+
 export function playGameSound(sound: GameSound) {
   if (!soundEnabled || soundVolume === 0) return;
   const context = getAudioContext();
   if (!context) return;
   if (context.state === "suspended") void context.resume();
+
+  if (sound === "SUNSET") {
+    const { output } = createOutput(context, 2.8, 0.46);
+    addTone(context, output, { frequency: 220, frequencyEnd: 110, duration: 2.5, gain: 0.2, type: "sine", attack: 0.28 });
+    addTone(context, output, { frequency: 330, frequencyEnd: 147, duration: 2.1, start: 0.18, gain: 0.08, type: "sine", attack: 0.32 });
+    addNoise(context, output, { duration: 2.6, gain: 0.035, frequency: 520, filterType: "lowpass", attack: 0.35 });
+    return;
+  }
 
   if (sound === "NIGHT_START") {
     const { output } = createOutput(context, 1.55, 0.58);

@@ -6,7 +6,7 @@ import { PageShell } from "../../../components/PageShell";
 import { VillageAtmosphere, villageModeForGamePhase, type VillageAtmosphereMode } from "../../../components/VillageAtmosphere";
 import { useCountdown } from "../../../hooks/useCountdown";
 import { useRoomSocket } from "../../../hooks/useRoomSocket";
-import { configureGameAudio, playGameSound, unlockGameAudio } from "../../../services/gameAudio";
+import { configureGameAudio, playGameSound, startNightWind, stopGameAmbience } from "../../../services/gameAudio";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role } from "../../../types";
@@ -81,16 +81,6 @@ export function GamePage() {
   }, [game?.phase, game?.round]);
 
   useEffect(() => {
-    const unlock = () => unlockGameAudio();
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, []);
-
-  useEffect(() => {
     configureGameAudio(soundEnabled, soundVolume / 100);
   }, [soundEnabled, soundVolume]);
 
@@ -110,17 +100,22 @@ export function GamePage() {
     if (!game) return;
     if (previousPhaseRef.current === null) {
       previousPhaseRef.current = game.phase;
+      if (game.phase === "ROLE_REVEAL") playGameSound("SUNSET");
       return;
     }
     if (previousPhaseRef.current === game.phase) return;
     previousPhaseRef.current = game.phase;
 
     let creatureTimeout: number | undefined;
-    if (game.phase === "NIGHT") {
+    let dayToneTimeout: number | undefined;
+    if (game.phase === "ROLE_REVEAL") {
+      playGameSound("SUNSET");
+    } else if (game.phase === "NIGHT") {
       playGameSound("NIGHT_START");
       creatureTimeout = window.setTimeout(() => playGameSound("NIGHT_CREATURE"), 1700);
     } else if (game.phase === "DAY_DISCUSSION") {
-      playGameSound("DAY_START");
+      playGameSound("CLOCK_BELL");
+      dayToneTimeout = window.setTimeout(() => playGameSound("DAY_START"), 1500);
     } else if (game.phase === "DAY_VOTING") {
       playGameSound("VOTING_START");
     } else if (game.phase === "ROUND_RESULT") {
@@ -131,8 +126,18 @@ export function GamePage() {
 
     return () => {
       if (creatureTimeout) window.clearTimeout(creatureTimeout);
+      if (dayToneTimeout) window.clearTimeout(dayToneTimeout);
     };
   }, [game?.phase, game?.winner]);
+
+  useEffect(() => {
+    if (game?.phase === "NIGHT" && soundEnabled) {
+      startNightWind();
+    } else {
+      stopGameAmbience();
+    }
+    return () => stopGameAmbience();
+  }, [game?.phase, soundEnabled]);
 
   useEffect(() => {
     const isWarningPhase = game?.phase === "DAY_DISCUSSION" || game?.phase === "DAY_VOTING";
