@@ -10,7 +10,7 @@ import { configureGameAudio, playGameSound, startNightWind, stopGameAmbience } f
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
 import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role } from "../../../types";
-import { shouldShowPersonalDeathEffect } from "../deathPresentation";
+import { shouldShowPersonalDeathEffect, vampireKillVariantFor, type VampireKillVariant } from "../deathPresentation";
 
 const phaseNames = {
   WAITING: "Bekleniyor",
@@ -801,7 +801,7 @@ function DeathEffect({ elimination }: { elimination: PlayerElimination }) {
       <div className="blood-cloud blood-cloud-one" />
       <div className="blood-cloud blood-cloud-two" />
       {vampireAttack ? (
-        <VampireKillSequence nickname={elimination.nickname} />
+        <VampireKillSequence elimination={elimination} />
       ) : (
         <div className="death-message relative z-10 text-center">
           <span className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-rose-300/25 bg-black/55 text-rose-200 shadow-[0_0_70px_rgba(190,18,60,.55)]">
@@ -826,9 +826,17 @@ function DeathEffect({ elimination }: { elimination: PlayerElimination }) {
   );
 }
 
-function VampireKillSequence({ nickname }: { nickname: string }) {
+function VampireKillSequence({ elimination }: { elimination: PlayerElimination }) {
+  const { nickname } = elimination;
+  const variant = vampireKillVariantFor(elimination);
+  const variantClass: Record<VampireKillVariant, string> = {
+    BACKSTAB: "vampire-kill-backstab",
+    SHADOW_BITE: "vampire-kill-shadow-bite",
+    DASH_SLASH: "vampire-kill-dash-slash"
+  };
+
   return (
-    <div className="vampire-kill-sequence absolute inset-0 z-10 overflow-hidden" aria-label={`${nickname} dün gece vampirler tarafından katledildi.`}>
+    <div className={`vampire-kill-sequence ${variantClass[variant]} absolute inset-0 z-10 overflow-hidden`} aria-label={`${nickname} dün gece vampirler tarafından katledildi.`}>
       <div className="vampire-kill-rift" aria-hidden="true" />
       <div className="vampire-kill-lines" aria-hidden="true">
         <span /><span /><span /><span />
@@ -843,6 +851,7 @@ function VampireKillSequence({ nickname }: { nickname: string }) {
           <span className="vampire-killer-arm">
             <span className="vampire-blade" />
           </span>
+          <span className="vampire-fangs"><i /><i /></span>
         </div>
         <div className="vampire-kill-actor vampire-victim">
           <span className="vampire-character-head">
@@ -851,6 +860,7 @@ function VampireKillSequence({ nickname }: { nickname: string }) {
           <span className="vampire-character-body" />
         </div>
         <span className="vampire-impact"><Swords size={38} /></span>
+        <span className="vampire-dash-trail" />
         <span className="vampire-blood-drop vampire-blood-drop-one" />
         <span className="vampire-blood-drop vampire-blood-drop-two" />
         <span className="vampire-blood-drop vampire-blood-drop-three" />

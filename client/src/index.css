@@ -870,6 +870,41 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   filter: drop-shadow(0 0 7px rgba(255, 255, 255, .5));
 }
 
+.vampire-fangs {
+  position: absolute;
+  z-index: 7;
+  right: -.25rem;
+  top: 3.75rem;
+  display: flex;
+  gap: .22rem;
+  opacity: 0;
+  transform: rotate(-18deg) scale(.35);
+  transform-origin: left center;
+}
+
+.vampire-fangs i {
+  display: block;
+  width: .5rem;
+  height: 1.15rem;
+  background: linear-gradient(to bottom, #fffdf4, #e7d9bd);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 0 5px rgba(255, 244, 214, .7));
+}
+
+.vampire-dash-trail {
+  position: absolute;
+  z-index: 6;
+  left: -10rem;
+  top: 45%;
+  width: 42rem;
+  height: .7rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .92) 45%, #fb7185 60%, transparent);
+  box-shadow: 0 0 24px rgba(244, 63, 94, .72);
+  opacity: 0;
+  transform: rotate(-8deg) scaleX(.1);
+}
+
 .vampire-impact {
   position: absolute;
   z-index: 8;
@@ -910,6 +945,46 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   transform: translateY(18px);
   animation: vampire-caption 4s cubic-bezier(.2, .8, .2, 1) both;
   text-shadow: 0 4px 24px rgba(0, 0, 0, .8);
+}
+
+.vampire-kill-shadow-bite .vampire-killer-arm {
+  display: none;
+}
+
+.vampire-kill-shadow-bite .vampire-killer {
+  z-index: 4;
+  animation-name: vampire-shadow-lunge;
+}
+
+.vampire-kill-shadow-bite .vampire-fangs {
+  animation: vampire-fang-strike 4s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.vampire-kill-shadow-bite .vampire-victim {
+  animation-name: vampire-bite-fall;
+}
+
+.vampire-kill-shadow-bite .vampire-impact {
+  color: #fff1d6;
+  background: rgba(127, 29, 29, .82);
+  animation-name: vampire-bite-impact;
+}
+
+.vampire-kill-dash-slash .vampire-killer {
+  z-index: 4;
+  animation-name: vampire-dash-attack;
+}
+
+.vampire-kill-dash-slash .vampire-killer-arm {
+  animation-name: vampire-dash-arm;
+}
+
+.vampire-kill-dash-slash .vampire-victim {
+  animation-name: vampire-dash-victim-fall;
+}
+
+.vampire-kill-dash-slash .vampire-dash-trail {
+  animation: vampire-dash-trail 4s cubic-bezier(.16, 1, .3, 1) both;
 }
 
 @keyframes vampire-rift {
@@ -972,6 +1047,61 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   0%, 48% { opacity: 0; transform: translateY(18px); filter: blur(8px); }
   62%, 86% { opacity: 1; transform: translateY(0); filter: blur(0); }
   100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes vampire-shadow-lunge {
+  0%, 10% { opacity: 0; transform: translateX(-9rem) scale(.82); filter: blur(10px); }
+  23% { opacity: 1; transform: translateX(2.2rem) scale(1.05); filter: blur(0); }
+  31% { opacity: 1; transform: translateX(5rem) translateY(-.4rem) rotate(7deg) scale(1.08); }
+  46%, 74% { opacity: 1; transform: translateX(3.8rem) rotate(2deg) scale(1); }
+  100% { opacity: 0; transform: translateX(1rem) scale(.95); }
+}
+
+@keyframes vampire-fang-strike {
+  0%, 23% { opacity: 0; transform: rotate(-18deg) scale(.35); }
+  29%, 39% { opacity: 1; transform: translate(1rem, .45rem) rotate(7deg) scale(1.12); }
+  50%, 100% { opacity: 0; transform: translate(.35rem, .1rem) rotate(-4deg) scale(.8); }
+}
+
+@keyframes vampire-bite-fall {
+  0%, 30% { opacity: 1; transform: translate(0) rotate(0); }
+  38% { transform: translateX(1rem) rotate(5deg); filter: brightness(1.35); }
+  61%, 76% { opacity: .72; transform: translate(2rem, 4.3rem) rotate(72deg) scale(.9); filter: brightness(.68); }
+  100% { opacity: 0; transform: translate(2rem, 5rem) rotate(76deg) scale(.86); }
+}
+
+@keyframes vampire-bite-impact {
+  0%, 29% { opacity: 0; transform: scale(.15); }
+  33% { opacity: 1; transform: scale(.82); }
+  45%, 100% { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes vampire-dash-attack {
+  0%, 12% { opacity: 0; transform: translateX(-13rem) skewX(-9deg) scale(.9); filter: blur(8px); }
+  24% { opacity: 1; transform: translateX(-1.5rem) skewX(-5deg) scale(1); filter: blur(0); }
+  34% { opacity: 1; transform: translateX(13.5rem) skewX(7deg) scale(1.03); filter: blur(1px); }
+  55%, 72% { opacity: .85; transform: translateX(15rem) skewX(0) scale(.96); filter: blur(0); }
+  100% { opacity: 0; transform: translateX(18rem) scale(.9); }
+}
+
+@keyframes vampire-dash-arm {
+  0%, 18% { opacity: 0; transform: rotate(-32deg) scaleX(.35); }
+  25%, 35% { opacity: 1; transform: rotate(8deg) scaleX(1.16); }
+  46%, 100% { opacity: 0; transform: rotate(16deg) scaleX(.78); }
+}
+
+@keyframes vampire-dash-victim-fall {
+  0%, 31% { opacity: 1; transform: translate(0) rotate(0); }
+  36% { transform: translateX(.7rem) rotate(-5deg); filter: brightness(1.5); }
+  44% { transform: translateX(1.5rem) rotate(14deg); }
+  65%, 76% { opacity: .7; transform: translate(2.4rem, 4.4rem) rotate(74deg) scale(.9); filter: brightness(.66); }
+  100% { opacity: 0; transform: translate(2.5rem, 5rem) rotate(78deg) scale(.84); }
+}
+
+@keyframes vampire-dash-trail {
+  0%, 23% { opacity: 0; transform: rotate(-8deg) scaleX(.08); }
+  30% { opacity: 1; transform: rotate(-8deg) scaleX(1); }
+  42%, 100% { opacity: 0; transform: translateX(3rem) rotate(-8deg) scaleX(1.06); }
 }
 
 .death-slash {

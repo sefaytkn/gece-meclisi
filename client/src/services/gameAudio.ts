@@ -157,6 +157,55 @@ function addNoise(
   source.start(start);
 }
 
+function addWoodHit(context: AudioContext, output: AudioNode, start: number, strength = 1) {
+  addNoise(context, output, {
+    start,
+    duration: 0.075,
+    gain: 0.22 * strength,
+    frequency: 980,
+    filterType: "bandpass",
+    q: 0.9,
+    attack: 0.002
+  });
+  addNoise(context, output, {
+    start: start + 0.012,
+    duration: 0.13,
+    gain: 0.13 * strength,
+    frequency: 310,
+    filterType: "lowpass",
+    attack: 0.002
+  });
+  addTone(context, output, {
+    start,
+    frequency: 138,
+    frequencyEnd: 88,
+    duration: 0.19,
+    gain: 0.16 * strength,
+    type: "sine",
+    attack: 0.004
+  });
+}
+
+function addClearChime(context: AudioContext, output: AudioNode, start: number, frequency: number, strength = 1) {
+  addTone(context, output, {
+    start,
+    frequency,
+    frequencyEnd: frequency * 0.985,
+    duration: 0.62,
+    gain: 0.13 * strength,
+    type: "sine",
+    attack: 0.008
+  });
+  addTone(context, output, {
+    start: start + 0.006,
+    frequency: frequency * 1.5,
+    duration: 0.38,
+    gain: 0.045 * strength,
+    type: "sine",
+    attack: 0.006
+  });
+}
+
 export function configureGameAudio(enabled: boolean, volume: number) {
   soundEnabled = enabled;
   soundVolume = Math.min(1, Math.max(0, volume));
@@ -294,17 +343,17 @@ export function playGameSound(sound: GameSound) {
   }
 
   if (sound === "VOTING_START") {
-    const { output } = createOutput(context, 1.15, 0.52);
-    [0, 0.28, 0.56].forEach((start, index) => {
-      addTone(context, output, { frequency: 165 - index * 14, frequencyEnd: 92, duration: 0.45, start, gain: 0.24, type: "sine", attack: 0.05 });
-    });
+    const { output } = createOutput(context, 1.05, 0.48);
+    addWoodHit(context, output, 0.03, 0.72);
+    addWoodHit(context, output, 0.28, 0.95);
+    addClearChime(context, output, 0.42, 660, 0.82);
     return;
   }
 
   if (sound === "VOTING_END") {
-    const { output } = createOutput(context, 1.05, 0.5);
-    addNoise(context, output, { duration: 0.12, gain: 0.18, frequency: 760, q: 1.4 });
-    addTone(context, output, { frequency: 146, frequencyEnd: 68, duration: 0.82, gain: 0.3, type: "sine", attack: 0.04 });
+    const { output } = createOutput(context, 0.88, 0.52);
+    addWoodHit(context, output, 0.025, 1.08);
+    addClearChime(context, output, 0.12, 494, 0.72);
     return;
   }
 
