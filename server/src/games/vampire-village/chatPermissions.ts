@@ -10,7 +10,8 @@ export function assertCanUseChat(player: InternalPlayer, phase: VampirePhase, ch
   if (channel === "DAY" && (!player.isAlive || phase !== "DAY_DISCUSSION")) {
     throw new AppError("CHAT_FORBIDDEN", "Yalnızca hayattaki oyuncular gündüz sohbetine yazabilir.");
   }
-  if (channel === "VAMPIRE" && (!player.isAlive || player.role !== "VAMPIRE" || phase !== "NIGHT")) {
+  const vampireChatOpen = phase === "NIGHT" || phase === "DAY_DISCUSSION";
+  if (channel === "VAMPIRE" && (!player.isAlive || player.role !== "VAMPIRE" || !vampireChatOpen)) {
     throw new AppError("CHAT_FORBIDDEN", "Vampir sohbetine erişemezsiniz.");
   }
   if (channel === "DEAD" && player.isAlive) {

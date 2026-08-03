@@ -45,6 +45,7 @@ export function GamePage() {
   const [actionPending, setActionPending] = useState(false);
   const [roleVisible, setRoleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [vampireChatMode, setVampireChatMode] = useState<"DAY" | "VAMPIRE">("DAY");
   const [visibleElimination, setVisibleElimination] = useState<PlayerElimination | null>(null);
   const [visibleOutcome, setVisibleOutcome] = useState<RoundOutcome | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
@@ -64,12 +65,14 @@ export function GamePage() {
 
   const chatChannel: ChatMessage["type"] = !privateState?.isAlive
     ? "DEAD"
-    : game?.phase === "NIGHT" && privateState.role === "VAMPIRE"
+    : privateState.role === "VAMPIRE" && game?.phase === "NIGHT"
       ? "VAMPIRE"
-      : "DAY";
+      : privateState.role === "VAMPIRE" && game?.phase === "DAY_DISCUSSION"
+        ? vampireChatMode
+        : "DAY";
   const chatEnabled =
     chatChannel === "DEAD" ||
-    (chatChannel === "VAMPIRE" && game?.phase === "NIGHT") ||
+    (chatChannel === "VAMPIRE" && (game?.phase === "NIGHT" || game?.phase === "DAY_DISCUSSION")) ||
     (chatChannel === "DAY" && game?.phase === "DAY_DISCUSSION");
   const visibleMessages = useMemo(
     () => messages.filter((message) => message.isSystem || message.type === chatChannel),
@@ -81,6 +84,8 @@ export function GamePage() {
     setActionError("");
     setActionPending(false);
     setRoleVisible(game?.phase === "ROLE_REVEAL");
+    if (game?.phase === "NIGHT") setVampireChatMode("VAMPIRE");
+    else if (game?.phase === "DAY_DISCUSSION") setVampireChatMode("DAY");
   }, [game?.phase, game?.round]);
 
   useEffect(() => {
@@ -620,6 +625,24 @@ export function GamePage() {
           {!privateState.isAlive && (
             <div className="mb-3 rounded-2xl border border-rose-400/20 bg-[#160b10]/95 px-4 py-3 text-xs text-rose-100 shadow-2xl backdrop-blur-xl">
               Bu sohbeti yalnızca ölen oyuncular görebilir.
+            </div>
+          )}
+          {privateState.isAlive && privateState.role === "VAMPIRE" && vampireAllies.length > 0 && game.phase === "DAY_DISCUSSION" && (
+            <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-500/20 bg-[#090e17]/95 p-1.5 shadow-2xl backdrop-blur-xl" aria-label="Sohbet kanalı">
+              <button
+                type="button"
+                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${vampireChatMode === "DAY" ? "bg-slate-200/10 text-white" : "text-mist hover:bg-white/[.04]"}`}
+                onClick={() => setVampireChatMode("DAY")}
+              >
+                Kasaba sohbeti
+              </button>
+              <button
+                type="button"
+                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${vampireChatMode === "VAMPIRE" ? "bg-rose-500/15 text-rose-200" : "text-mist hover:bg-rose-500/[.07] hover:text-rose-200"}`}
+                onClick={() => setVampireChatMode("VAMPIRE")}
+              >
+                Vampir sohbeti
+              </button>
             </div>
           )}
           <ChatPanel

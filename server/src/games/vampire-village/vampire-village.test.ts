@@ -193,6 +193,15 @@ describe("gece, oy ve sohbet kuralları", () => {
     expect(() => assertCanUseChat(villager, "NIGHT", "VAMPIRE")).toThrow(/Vampir sohbetine/);
   });
 
+  it("yaşayan Vampir gündüz takım sohbetini kullanabilir fakat diğer roller göremez", () => {
+    const engine = startedEngine();
+    const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
+    const vampire = internal.find((player) => player.role === "VAMPIRE")!;
+    const villager = internal.find((player) => player.role === "VILLAGER")!;
+    expect(() => assertCanUseChat(vampire, "DAY_DISCUSSION", "VAMPIRE")).not.toThrow();
+    expect(() => assertCanUseChat(villager, "DAY_DISCUSSION", "VAMPIRE")).toThrow(/Vampir sohbetine/);
+  });
+
   it("gündüz oylamasında en çok oy alan yaşayan oyuncuyu eler", () => {
     const engine = startedEngine();
     engine.advancePhase();
