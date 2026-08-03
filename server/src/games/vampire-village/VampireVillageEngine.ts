@@ -181,8 +181,13 @@ export class VampireVillageEngine implements GameEngine {
       this.nightActions.clear();
       this.votes.clear();
       this.lastOutcome = null;
-      this.phase = "NIGHT";
-      this.lastResult = `${this.round}. gece başladı.`;
+      if (this.wouldNextNightCreateVampireParity()) {
+        this.phase = "DAY_DISCUSSION";
+        this.lastResult = "Vampirler çoğunluğa çok yaklaştı. Kasaba gece olmadan yeniden tartışmaya geçti.";
+      } else {
+        this.phase = "NIGHT";
+        this.lastResult = `${this.round}. gece başladı.`;
+      }
     }
     return this.phase;
   }
@@ -218,7 +223,8 @@ export class VampireVillageEngine implements GameEngine {
   }
 
   private finishOr(next: VampirePhase) {
-    const winner = this.checkWinner();
+    const calculatedWinner = this.checkWinner();
+    const winner = next === "DAY_DISCUSSION" && calculatedWinner === "VAMPIRES" ? null : calculatedWinner;
     if (winner) {
       this.winner = winner;
       this.phase = "FINISHED";
@@ -230,6 +236,13 @@ export class VampireVillageEngine implements GameEngine {
 
   checkWinner(): Winner {
     return calculateWinner([...this.players.values()], this.completedDayVotes);
+  }
+
+  private wouldNextNightCreateVampireParity() {
+    const alive = [...this.players.values()].filter((player) => player.isAlive);
+    const vampires = alive.filter((player) => player.role === "VAMPIRE").length;
+    const others = alive.length - vampires;
+    return vampires > 0 && others === vampires + 1;
   }
 
   haveAllRequiredNightActions() {

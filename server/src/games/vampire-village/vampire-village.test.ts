@@ -394,6 +394,56 @@ describe("kazanan kontrolü", () => {
     expect(engine.getPublicState().winner).toBeNull();
   });
 
+  it("tek ölümle Vampir çoğunluğu oluşacaksa sonraki geceyi atlayıp yeniden tartışmaya geçer", () => {
+    const criticalPlayers = players.slice(0, 4);
+    const engine = new VampireVillageEngine(
+      criticalPlayers,
+      settings({ mode: "FREE", roles: { vampires: 1, villagers: 3, doctors: 0 } })
+    );
+    engine.start();
+    engine.advancePhase();
+    const internal = criticalPlayers.map((item) => engine.getInternalPlayer(item.id)!);
+    const vampire = internal.find((item) => item.role === "VAMPIRE")!;
+    const firstTarget = internal.find((item) => item.role === "VILLAGER")!;
+
+    engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: firstTarget.id });
+    expect(engine.advancePhase()).toBe("DAY_DISCUSSION");
+    engine.advancePhase();
+    engine.getPublicState().players
+      .filter((player) => player.isAlive)
+      .forEach((player) => engine.handleAction(player.id, { type: "VOTE", targetId: SKIP_VOTE_ID }));
+    expect(engine.advancePhase()).toBe("ROUND_RESULT");
+
+    expect(engine.advancePhase()).toBe("DAY_DISCUSSION");
+    expect(engine.getPublicState().lastResult).toContain("gece olmadan yeniden tartışmaya geçti");
+    expect(engine.getPublicState().winner).toBeNull();
+  });
+
+  it("gece sonunda parite oluşsa bile doğrudan Vampir zaferi vermeden gündüze geçer", () => {
+    const engine = new VampireVillageEngine(
+      players,
+      settings({ mode: "FREE", roles: { vampires: 1, villagers: 4, doctors: 0 } })
+    );
+    engine.start();
+    engine.advancePhase();
+    const internal = players.map((item) => engine.getInternalPlayer(item.id)!);
+    const vampire = internal.find((item) => item.role === "VAMPIRE")!;
+    const villagers = internal.filter((item) => item.role === "VILLAGER");
+
+    engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: villagers[0]!.id });
+    engine.advancePhase();
+    engine.advancePhase();
+    engine.getPublicState().players
+      .filter((player) => player.isAlive)
+      .forEach((player) => engine.handleAction(player.id, { type: "VOTE", targetId: SKIP_VOTE_ID }));
+    engine.advancePhase();
+    expect(engine.advancePhase()).toBe("NIGHT");
+    engine.removePlayer(villagers[1]!.id);
+    engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: villagers[2]!.id });
+    expect(engine.advancePhase()).toBe("DAY_DISCUSSION");
+    expect(engine.getPublicState().winner).toBeNull();
+  });
+
   it("oyun bittiginde de public state rol bilgisi sizdirmaz", () => {
     const freePlayers = players.slice(0, 3);
     const engine = new VampireVillageEngine(freePlayers, settings({
