@@ -101,6 +101,38 @@ describe("RoomService yetkilendirme ve yeniden bağlanma", () => {
     expect(reconnected.room.players).toHaveLength(4);
   });
 
+  it("ayrılma yanıtı kaybolsa bile aynı tarayıcının girişini tek oyuncu olarak uzlaştırır", async () => {
+    const service = new RoomService();
+    const owner = await service.createRoom({ name: "Tekrar Giriş", maxPlayers: 8 }, identity(1));
+    const firstJoin = await service.joinRoom({ code: owner.room.code }, identity(2));
+
+    const recovered = await service.joinRoom(
+      { code: owner.room.code },
+      { ...identity(2), socketId: "socket-2-new" }
+    );
+
+    expect(recovered.playerId).toBe(firstJoin.playerId);
+    expect(recovered.reconnectToken).toBe(firstJoin.reconnectToken);
+    expect(recovered.replacedSocketId).toBe("socket-2");
+    expect(recovered.room.players).toHaveLength(2);
+  });
+
+  it("odadan ayrılan tarayıcının aynı odaya temiz bir oyuncu olarak yeniden girmesine izin verir", async () => {
+    const service = new RoomService();
+    const owner = await service.createRoom({ name: "Geri Dönüş", maxPlayers: 8 }, identity(1));
+    const firstJoin = await service.joinRoom({ code: owner.room.code }, identity(2));
+    service.leaveRoom(owner.room.code, firstJoin.playerId);
+
+    const secondJoin = await service.joinRoom(
+      { code: owner.room.code },
+      { ...identity(2), socketId: "socket-2-returned" }
+    );
+
+    expect(secondJoin.playerId).not.toBe(firstJoin.playerId);
+    expect(secondJoin.reconnectToken).not.toBe(firstJoin.reconnectToken);
+    expect(secondJoin.room.players).toHaveLength(2);
+  });
+
   it("başka oyuncunun reconnect token'ını kabul etmez", async () => {
     const { service, owner, joins } = await fullRoom();
     await expect(

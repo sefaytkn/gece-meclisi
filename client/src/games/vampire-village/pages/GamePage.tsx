@@ -213,13 +213,12 @@ export function GamePage() {
     }
   };
 
-  const leave = async () => {
-    try {
-      await emitAck("room:leave");
-    } finally {
-      clearRoomSession(code);
-      navigate("/");
-    }
+  const leave = () => {
+    clearRoomSession(code);
+    navigate("/", { replace: true });
+    void emitAck("room:leave").catch(() => {
+      // Yerel oturum temizlendi; sunucu bağlantı kesilmesi veya sonraki girişte üyeliği uzlaştırır.
+    });
   };
 
   if (!room || !game || !privateState) {

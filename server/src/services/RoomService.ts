@@ -129,7 +129,11 @@ export class RoomService {
     const room = this.requireRoom(code);
     const reconnecting = input.reconnectToken
       ? room.players.find((player) => player.reconnectToken === input.reconnectToken)
-      : undefined;
+      : room.players.find(
+          (player) =>
+            (identity.userId && player.userId === identity.userId) ||
+            player.guestId === identity.guestId
+        );
 
     if (input.reconnectToken && !reconnecting) {
       throw new AppError("INVALID_RECONNECT_TOKEN", "Yeniden bağlanma anahtarı geçersiz.");
@@ -158,10 +162,6 @@ export class RoomService {
     if (room.passwordHash && !(await bcrypt.compare(input.password ?? "", room.passwordHash))) {
       throw new AppError("INVALID_ROOM_PASSWORD", "Oda şifresi hatalı.");
     }
-    const duplicate = room.players.find(
-      (player) => (identity.userId && player.userId === identity.userId) || player.guestId === identity.guestId
-    );
-    if (duplicate) throw new AppError("ALREADY_IN_ROOM", "Bu oyuncu zaten odada.");
     const player = this.createPlayer(identity);
     const previousCount = room.players.length;
     room.players.push(player);

@@ -114,11 +114,12 @@ export function LobbyPage() {
     window.setTimeout(() => setInviteCopied(false), 2200);
   };
 
-  const leave = async () => {
-    await run(async () => {
-      await emitAck("room:leave");
-      clearRoomSession(code);
-      navigate("/");
+  const leave = () => {
+    if (busyRef.current) return;
+    clearRoomSession(code);
+    navigate("/", { replace: true });
+    void emitAck("room:leave").catch(() => {
+      // Yerel oturum temizlendi; sunucu bağlantı kesilmesi veya sonraki girişte üyeliği uzlaştırır.
     });
   };
 
