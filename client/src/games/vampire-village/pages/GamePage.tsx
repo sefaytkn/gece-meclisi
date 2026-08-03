@@ -89,6 +89,10 @@ export function GamePage() {
   }, [game?.phase, game?.round]);
 
   useEffect(() => {
+    if (room?.status === "WAITING") navigate(`/rooms/${room.code}/lobby`, { replace: true });
+  }, [room?.code, room?.status, navigate]);
+
+  useEffect(() => {
     configureGameAudio(soundEnabled, soundVolume / 100);
   }, [soundEnabled, soundVolume]);
 
@@ -231,12 +235,33 @@ export function GamePage() {
     }
   };
 
-  const leave = () => {
-    clearRoomSession(code);
-    navigate("/", { replace: true });
-    void emitAck("room:leave").catch(() => {
-      // Yerel oturum temizlendi; sunucu bağlantı kesilmesi veya sonraki girişte üyeliği uzlaştırır.
-    });
+  const leave = async () => {
+    if (actionPending) return;
+    try {
+      setActionPending(true);
+      setActionError("");
+      await emitAck("room:leave");
+      clearRoomSession(code);
+      navigate("/", { replace: true });
+    } catch (leaveError) {
+      setActionError(leaveError instanceof Error ? leaveError.message : "Odadan ayrılınamadı.");
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const returnToLobby = async () => {
+    if (actionPending) return;
+    try {
+      setActionPending(true);
+      setActionError("");
+      await emitAck("room:rematch");
+      navigate(`/rooms/${code}/lobby`, { replace: true });
+    } catch (returnError) {
+      setActionError(returnError instanceof Error ? returnError.message : "Odaya dönülemedi.");
+    } finally {
+      setActionPending(false);
+    }
   };
 
   if (!room || !game || !privateState) {
@@ -701,8 +726,10 @@ export function GamePage() {
           players={game.players}
           revealedRoleByPlayer={revealedRoleByPlayer}
           isOwner={room.ownerPlayerId === session?.playerId}
-          onRematch={() => void emitAck("room:rematch").then(() => navigate(`/rooms/${code}/lobby`))}
-          onReturn={() => navigate(`/rooms/${code}/lobby`)}
+          busy={actionPending}
+          error={actionError}
+          onRematch={() => void returnToLobby()}
+          onReturn={() => void returnToLobby()}
           onLeave={() => void leave()}
         />
       )}
@@ -717,6 +744,8 @@ function VictoryScreen({
   players,
   revealedRoleByPlayer,
   isOwner,
+  busy,
+  error,
   onRematch,
   onReturn,
   onLeave
@@ -726,6 +755,8 @@ function VictoryScreen({
   players: GamePlayer[];
   revealedRoleByPlayer: Map<string, Role>;
   isOwner: boolean;
+  busy: boolean;
+  error: string;
   onRematch: () => void;
   onReturn: () => void;
   onLeave: () => void;
@@ -782,10 +813,11 @@ function VictoryScreen({
         </section>
 
         <div className="mt-8 flex w-full max-w-3xl flex-col justify-center gap-3 sm:flex-row">
-          {isOwner && <button className="btn-primary justify-center" onClick={onRematch}>Tekrar oyna</button>}
-          <button className="btn-secondary justify-center" onClick={onReturn}>Odaya dön</button>
-          <button className="btn-ghost justify-center text-white/70" onClick={onLeave}>Odadan ayrıl</button>
+          {isOwner && <button className="btn-primary justify-center" disabled={busy} onClick={onRematch}>Tekrar oyna</button>}
+          <button className="btn-secondary justify-center" disabled={busy} onClick={onReturn}>Odaya dön</button>
+          <button className="btn-ghost justify-center text-white/70" disabled={busy} onClick={onLeave}>Odadan ayrıl</button>
         </div>
+        {error && <p className="mt-4 rounded-xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100" role="alert">{error}</p>}
       </div>
     </div>
   );

@@ -52,6 +52,28 @@ describe("RoomService yetkilendirme ve yeniden bağlanma", () => {
     expect(room.ownerPlayerId).toBe(joins[0]!.playerId);
   });
 
+  it("kurucu ayrılınca oda sahipliğini katılma sırasındaki ikinci oyuncuya verir", async () => {
+    const { service, owner, joins } = await fullRoom();
+    const result = service.leaveRoom(owner.room.code, owner.playerId);
+
+    expect(result.deleted).toBe(false);
+    expect(result.transferredTo).toBe(joins[0]!.playerId);
+    expect(result.room?.ownerPlayerId).toBe(joins[0]!.playerId);
+  });
+
+  it("oyun bitince odadaki herhangi bir oyuncunun bekleme odasına dönmesini sağlar", async () => {
+    const { service, owner, joins } = await fullRoom();
+    const internalRoom = service.getInternalRoom(owner.room.code);
+    internalRoom.status = "FINISHED";
+    internalRoom.players.forEach((player) => { player.isReady = true; });
+
+    const returnedRoom = service.rematch(owner.room.code, joins[0]!.playerId);
+
+    expect(returnedRoom.status).toBe("WAITING");
+    expect(returnedRoom.players.every((player) => !player.isReady)).toBe(true);
+    expect(service.rematch(owner.room.code, joins[1]!.playerId).status).toBe("WAITING");
+  });
+
   it("son oyuncu ayrıldığında boş odayı temizler", async () => {
     const service = new RoomService();
     const created = await service.createRoom({ name: "Tek Kişi", maxPlayers: 4 }, identity(1));

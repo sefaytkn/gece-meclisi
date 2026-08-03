@@ -50,7 +50,9 @@ export function LobbyPage() {
               : "";
 
   useEffect(() => {
-    if (room?.status === "PLAYING") navigate(`/rooms/${room.code}/game`, { replace: true });
+    if (room?.status === "PLAYING" || room?.status === "FINISHED") {
+      navigate(`/rooms/${room.code}/game`, { replace: true });
+    }
   }, [room?.code, room?.status, navigate]);
 
   useEffect(() => {
@@ -115,11 +117,10 @@ export function LobbyPage() {
   };
 
   const leave = () => {
-    if (busyRef.current) return;
-    clearRoomSession(code);
-    navigate("/", { replace: true });
-    void emitAck("room:leave").catch(() => {
-      // Yerel oturum temizlendi; sunucu bağlantı kesilmesi veya sonraki girişte üyeliği uzlaştırır.
+    void run(async () => {
+      await emitAck("room:leave");
+      clearRoomSession(code);
+      navigate("/", { replace: true });
     });
   };
 

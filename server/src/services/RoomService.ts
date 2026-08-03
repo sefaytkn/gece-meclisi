@@ -262,7 +262,8 @@ export class RoomService {
 
   rematch(code: string, playerId: string) {
     const room = this.requireRoom(code);
-    this.requireOwner(room, playerId);
+    this.requirePlayer(room, playerId);
+    if (room.status === "WAITING") return this.publicRoom(room);
     if (room.status !== "FINISHED") throw new AppError("GAME_NOT_FINISHED", "Yeni oyun yalnızca maç bittikten sonra hazırlanabilir.");
     room.status = "WAITING";
     room.engine = null;
