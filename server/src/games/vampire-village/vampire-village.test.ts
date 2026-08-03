@@ -115,10 +115,23 @@ describe("gece, oy ve sohbet kuralları", () => {
     const doctor = internal.find((player) => player.role === "DOCTOR")!;
     const target = internal.find((player) => player.role === "VILLAGER")!;
     engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: target.id });
+    expect(engine.haveAllRequiredNightActions()).toBe(false);
     engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: target.id });
+    expect(engine.haveAllRequiredNightActions()).toBe(true);
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(true);
     expect(engine.getPublicState().lastOutcome).toMatchObject({ type: "NIGHT_SAFE", round: 1 });
+  });
+
+  it("bağlantısı kopan gece rolünü beklemeden kalan kararlar tamamlanınca geceyi bitirir", () => {
+    const engine = startedEngine();
+    const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
+    const vampire = internal.find((player) => player.role === "VAMPIRE")!;
+    const doctor = internal.find((player) => player.role === "DOCTOR")!;
+    const target = internal.find((player) => player.role === "VILLAGER")!;
+    engine.setConnected(doctor.id, false);
+    engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: target.id });
+    expect(engine.haveAllRequiredNightActions()).toBe(true);
   });
 
   it("Doktor korumadığında Vampir hedefini eler", () => {

@@ -327,12 +327,8 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
         assertPhaseOpen(room);
         const boundAction = bindGameAction(playerId, "NIGHT_ACTION", input);
         room.engine.handleAction(boundAction.actorPlayerId, boundAction.action);
-        socket.emit("game:state", {
-          ...room.engine.getPublicState(),
-          phaseEndsAt: room.phaseEndsAt,
-          serverNow: Date.now()
-        });
-        socket.emit("game:private-role", room.engine.getPrivateState(playerId));
+        if (room.engine.haveAllRequiredNightActions()) completePhase(roomCode);
+        else broadcastGame(roomCode);
         return { accepted: true };
       })();
     });
@@ -401,6 +397,12 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
       if (!disconnected) return;
       const { room, player } = disconnected;
       broadcastRoom(room.code);
+      const publicState = room.engine?.getPublicState();
+      if (room.engine?.getPhase() === "NIGHT" && room.engine.haveAllRequiredNightActions()) {
+        completePhase(room.code);
+      } else if (room.engine?.getPhase() === "DAY_VOTING" && publicState && haveAllAlivePlayersVoted(publicState)) {
+        completePhase(room.code);
+      }
       const disconnectTimer = setTimeout(() => {
         disconnectTimers.delete(disconnectTimer);
         const result = roomService.expireDisconnected(room.code, player.id);
@@ -468,9 +470,18 @@ export function assertPhaseOpen(room: Pick<RoomState, "phaseEndsAt">, now = Date
   }
 }
 
-export function haveAllAlivePlayersVoted(state: { votesCast: number; players: { isAlive: boolean }[] }) {
-  const aliveCount = state.players.filter((player) => player.isAlive).length;
-  return aliveCount > 0 && state.votesCast >= aliveCount;
+export function haveAllAlivePlayersVoted(state: {
+  votesCast: number;
+  votedPlayerIds?: string[];
+  players: { id?: string; isAlive: boolean; connected?: boolean }[];
+}) {
+  const activeAlivePlayers = state.players.filter((player) => player.isAlive && player.connected !== false);
+  if (activeAlivePlayers.length === 0) return false;
+  if (state.votedPlayerIds && activeAlivePlayers.every((player) => player.id)) {
+    const votedPlayerIds = new Set(state.votedPlayerIds);
+    return activeAlivePlayers.every((player) => votedPlayerIds.has(player.id!));
+  }
+  return state.votesCast >= activeAlivePlayers.length;
 }
 
 function enforceChatRate(socketId: string, windows: Map<string, number[]>) {

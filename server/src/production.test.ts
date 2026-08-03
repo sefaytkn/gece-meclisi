@@ -190,6 +190,24 @@ describe("authoritative game deadline", () => {
       votesCast: 1,
       players: [{ isAlive: true }, { isAlive: true }, { isAlive: false }]
     })).toBe(false);
+    expect(haveAllAlivePlayersVoted({
+      votesCast: 2,
+      votedPlayerIds: ["disconnected", "active"],
+      players: [
+        { id: "active", isAlive: true },
+        { id: "waiting", isAlive: true },
+        { id: "disconnected", isAlive: true, connected: false }
+      ]
+    })).toBe(false);
+    expect(haveAllAlivePlayersVoted({
+      votesCast: 2,
+      votedPlayerIds: ["active", "waiting"],
+      players: [
+        { id: "active", isAlive: true },
+        { id: "waiting", isAlive: true },
+        { id: "disconnected", isAlive: true, connected: false }
+      ]
+    })).toBe(true);
   });
 });
 

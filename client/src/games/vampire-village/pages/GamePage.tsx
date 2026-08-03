@@ -54,6 +54,8 @@ export function GamePage() {
   });
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
   const [atmosphereMode, setAtmosphereMode] = useState<VillageAtmosphereMode>("DAY");
+  const soundPanelRef = useRef<HTMLElement | null>(null);
+  const soundPanelButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousPhaseRef = useRef<GameState["phase"] | null>(null);
   const playedTimeWarningRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
@@ -84,6 +86,17 @@ export function GamePage() {
   useEffect(() => {
     configureGameAudio(soundEnabled, soundVolume / 100);
   }, [soundEnabled, soundVolume]);
+
+  useEffect(() => {
+    if (!soundPanelOpen) return;
+    const closeOnOutsideInteraction = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (soundPanelRef.current?.contains(target) || soundPanelButtonRef.current?.contains(target)) return;
+      setSoundPanelOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideInteraction);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideInteraction);
+  }, [soundPanelOpen]);
 
   useEffect(() => {
     if (!gameReady || !game) return;
@@ -554,6 +567,7 @@ export function GamePage() {
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
             <button
+              ref={soundPanelButtonRef}
               className={`btn-icon ${soundPanelOpen ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : ""}`}
               onClick={() => setSoundPanelOpen((open) => !open)}
               aria-label={soundPanelOpen ? "Ses ayarlarını kapat" : "Ses ayarlarını aç"}
@@ -570,7 +584,7 @@ export function GamePage() {
       </div>
 
       {soundPanelOpen && (
-        <section className="fixed right-4 top-24 z-[55] w-[min(19rem,calc(100vw-2rem))] rounded-2xl border border-slate-500/20 bg-[#090e17]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.55)] backdrop-blur-xl sm:right-20" aria-label="Ses ayarları">
+        <section ref={soundPanelRef} className="fixed right-4 top-24 z-[55] w-[min(19rem,calc(100vw-2rem))] rounded-2xl border border-slate-500/20 bg-[#090e17]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.55)] backdrop-blur-xl sm:right-20" aria-label="Ses ayarları">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-white">Atmosfer sesleri</p>

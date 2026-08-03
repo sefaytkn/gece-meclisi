@@ -227,6 +227,14 @@ export class VampireVillageEngine implements GameEngine {
     return calculateWinner([...this.players.values()], this.completedDayVotes);
   }
 
+  haveAllRequiredNightActions() {
+    if (this.phase !== "NIGHT") return false;
+    const activeNightActors = [...this.players.values()].filter(
+      (player) => player.isAlive && player.connected && player.role !== "VILLAGER"
+    );
+    return activeNightActors.length > 0 && activeNightActors.every((player) => this.nightActions.has(player.id));
+  }
+
   removePlayer(playerId: string) {
     const player = this.players.get(playerId);
     if (player) {
