@@ -23,10 +23,18 @@ export function ChatPanel({ messages, channel, disabled, className = "", onClose
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  const previousMessageCountRef = useRef(0);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+    const firstMessages = previousMessageCountRef.current === 0;
+    const distanceFromBottom = messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight;
+    if (firstMessages || distanceFromBottom < 120) {
+      messageList.scrollTop = messageList.scrollHeight;
+    }
+    previousMessageCountRef.current = messages.length;
   }, [messages]);
 
   const submit = async (event: React.FormEvent) => {
@@ -66,7 +74,7 @@ export function ChatPanel({ messages, channel, disabled, className = "", onClose
           )}
         </div>
       </div>
-      <div className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">
+      <div ref={messageListRef} className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">
         {messages.length === 0 && (
           <div className="grid h-full min-h-52 place-items-center text-center">
             <div>
@@ -91,7 +99,6 @@ export function ChatPanel({ messages, channel, disabled, className = "", onClose
             </div>
           )
         )}
-        <div ref={endRef} />
       </div>
       <form onSubmit={submit} className="border-t border-gold/[.1] p-4">
         {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
