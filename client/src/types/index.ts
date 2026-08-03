@@ -100,6 +100,7 @@ export interface PrivateState {
   deathCause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | null;
   vampireAllies: { playerId: string; nickname: string; isAlive: boolean }[];
   vampireNightChoices: { playerId: string; nickname: string; targetId: string }[];
+  villagerTask: { targetId: string; targetNickname: string; expiresAt: number; completed: boolean } | null;
   revealedRoles: { playerId: string; nickname: string; role: Role; isAlive: boolean }[];
 }
 

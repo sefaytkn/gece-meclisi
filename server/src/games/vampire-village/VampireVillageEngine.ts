@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomInt } from "node:crypto";
 import type { GameEngine } from "../core/GameEngine.js";
 import type { EnginePlayer, PublicGameState, PublicRoundOutcome, Winner } from "../core/GameTypes.js";
 import { AppError } from "../../utils/AppError.js";
@@ -51,6 +52,7 @@ export class VampireVillageEngine implements GameEngine {
   private lastOutcome: PublicRoundOutcome | null = null;
   private readonly players = new Map<string, InternalPlayer>();
   private readonly nightActions = new Map<string, string>();
+  private readonly villagerTasks = new Map<string, { targetId: string; expiresAt: number; completed: boolean }>();
   private readonly votes = new Map<string, string>();
   private lastVoteTally: { targetId: string; count: number; voterIds: string[] }[] = [];
 
@@ -96,7 +98,15 @@ export class VampireVillageEngine implements GameEngine {
 
   private handleNightAction(player: InternalPlayer, target: InternalPlayer) {
     if (this.phase !== "NIGHT") throw new AppError("INVALID_PHASE", "Gece eylemleri yalnızca gece aşamasında yapılabilir.");
-    if (player.role === "VILLAGER") throw new AppError("ROLE_HAS_NO_NIGHT_ACTION", "Köylünün gece eylemi yoktur.");
+    if (player.role === "VILLAGER") {
+      const task = this.villagerTasks.get(player.id);
+      if (!task) throw new AppError("VILLAGER_TASK_NOT_FOUND", "Bu gece için görev bulunamadı.");
+      if (Date.now() >= task.expiresAt) throw new AppError("VILLAGER_TASK_EXPIRED", "Gece görevinin süresi doldu.");
+      if (task.completed) throw new AppError("ACTION_ALREADY_SUBMITTED", "Bu gece görevini zaten tamamladınız.");
+      if (target.id !== task.targetId) throw new AppError("WRONG_VILLAGER_TARGET", "Hedefin bu oyuncu değil.");
+      task.completed = true;
+      return;
+    }
     if (this.nightActions.has(player.id)) throw new AppError("ACTION_ALREADY_SUBMITTED", "Bu gece eylemini zaten kullandınız.");
     if (player.role === "VAMPIRE" && target.role === "VAMPIRE") {
       throw new AppError("INVALID_TARGET", "Vampirler başka bir Vampiri hedefleyemez.");
@@ -130,7 +140,7 @@ export class VampireVillageEngine implements GameEngine {
   advancePhase(): VampirePhase {
     if (this.phase === "ROLE_REVEAL") {
       this.round = 1;
-      this.phase = "NIGHT";
+      this.beginNight();
       this.lastResult = "Gece çöktü. Kasaba sessizliğe büründü.";
     } else if (this.phase === "NIGHT") {
       this.resolveCurrentNight();
@@ -185,7 +195,7 @@ export class VampireVillageEngine implements GameEngine {
         this.phase = "DAY_DISCUSSION";
         this.lastResult = "Vampirler çoğunluğa çok yaklaştı. Kasaba gece olmadan yeniden tartışmaya geçti.";
       } else {
-        this.phase = "NIGHT";
+        this.beginNight();
         this.lastResult = `${this.round}. gece başladı.`;
       }
     }
@@ -245,12 +255,30 @@ export class VampireVillageEngine implements GameEngine {
     return vampires > 0 && others === vampires + 1;
   }
 
+  private beginNight() {
+    this.phase = "NIGHT";
+    this.villagerTasks.clear();
+    const expiresAt = Date.now() + 10_000;
+    const alive = [...this.players.values()].filter((player) => player.isAlive);
+    alive
+      .filter((player) => player.role === "VILLAGER")
+      .forEach((villager) => {
+        const candidates = alive.filter((candidate) => candidate.id !== villager.id);
+        if (candidates.length === 0) return;
+        const target = candidates[randomInt(candidates.length)]!;
+        this.villagerTasks.set(villager.id, { targetId: target.id, expiresAt, completed: false });
+      });
+  }
+
   haveAllRequiredNightActions() {
     if (this.phase !== "NIGHT") return false;
-    const activeNightActors = [...this.players.values()].filter(
-      (player) => player.isAlive && player.connected && player.role !== "VILLAGER"
-    );
-    return activeNightActors.length > 0 && activeNightActors.every((player) => this.nightActions.has(player.id));
+    const activePlayers = [...this.players.values()].filter((player) => player.isAlive && player.connected);
+    const now = Date.now();
+    return activePlayers.length > 0 && activePlayers.every((player) => {
+      if (player.role !== "VILLAGER") return this.nightActions.has(player.id);
+      const task = this.villagerTasks.get(player.id);
+      return !task || task.completed || now >= task.expiresAt;
+    });
   }
 
   removePlayer(playerId: string) {
@@ -340,6 +368,21 @@ export class VampireVillageEngine implements GameEngine {
                   : [];
               })
           : [],
+      villagerTask:
+        player.role === "VILLAGER" && this.phase === "NIGHT"
+          ? (() => {
+              const task = this.villagerTasks.get(player.id);
+              const target = task ? this.players.get(task.targetId) : null;
+              return task && target
+                ? {
+                    targetId: task.targetId,
+                    targetNickname: target.nickname,
+                    expiresAt: task.expiresAt,
+                    completed: task.completed || Date.now() >= task.expiresAt
+                  }
+                : null;
+            })()
+          : null,
       revealedRoles:
         this.phase === "FINISHED" || (!player.isAlive && this.settings.deadCanSeeRoles)
           ? [...this.players.values()].map((candidate) => ({

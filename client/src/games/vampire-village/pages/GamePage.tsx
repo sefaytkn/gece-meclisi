@@ -48,6 +48,7 @@ export function GamePage() {
   const [vampireChatMode, setVampireChatMode] = useState<"DAY" | "VAMPIRE">("DAY");
   const [visibleElimination, setVisibleElimination] = useState<PlayerElimination | null>(null);
   const [visibleOutcome, setVisibleOutcome] = useState<RoundOutcome | null>(null);
+  const [villagerTaskIntroVisible, setVillagerTaskIntroVisible] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
   const [soundVolume, setSoundVolume] = useState(() => {
     const storedVolume = Number(localStorage.getItem("gece:sound-volume"));
@@ -60,6 +61,7 @@ export function GamePage() {
   const previousPhaseRef = useRef<GameState["phase"] | null>(null);
   const playedTimeWarningRef = useRef("");
   const seconds = useCountdown(game?.phaseEndsAt, game?.serverNow);
+  const villagerTaskSeconds = useCountdown(privateState?.villagerTask?.expiresAt, game?.serverNow);
   const gameReady = Boolean(game);
   const desiredAtmosphereMode = game ? villageModeForGamePhase(game.phase) : "DAY";
 
@@ -87,6 +89,20 @@ export function GamePage() {
     if (game?.phase === "NIGHT") setVampireChatMode("VAMPIRE");
     else if (game?.phase === "DAY_DISCUSSION") setVampireChatMode("DAY");
   }, [game?.phase, game?.round]);
+
+  useEffect(() => {
+    const task = privateState?.villagerTask;
+    const nightTaskAlreadyDone = privateState?.role === "VILLAGER"
+      ? !task || task.completed
+      : privateState?.submittedNightAction;
+    if (game?.phase !== "NIGHT" || !privateState?.isAlive || nightTaskAlreadyDone) {
+      setVillagerTaskIntroVisible(false);
+      return;
+    }
+    setVillagerTaskIntroVisible(true);
+    const timeout = window.setTimeout(() => setVillagerTaskIntroVisible(false), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [game?.phase, game?.round, privateState?.role, privateState?.villagerTask?.targetId]);
 
   useEffect(() => {
     if (room?.status === "WAITING") navigate(`/rooms/${room.code}/lobby`, { replace: true });
@@ -221,13 +237,13 @@ export function GamePage() {
     localStorage.setItem("gece:sound-volume", String(volume));
   };
 
-  const submitAction = async () => {
-    if (!selected || !game) return;
+  const submitAction = async (targetId = selected) => {
+    if (!targetId || !game) return;
     try {
       setActionPending(true);
       setActionError("");
-      if (game.phase === "NIGHT") await emitAck("game:night-action", { targetId: selected });
-      else await emitAck("game:vote", { targetId: selected });
+      if (game.phase === "NIGHT") await emitAck("game:night-action", { targetId });
+      else await emitAck("game:vote", { targetId });
     } catch (submitError) {
       setActionError(submitError instanceof Error ? submitError.message : "Eylem gönderilemedi.");
     } finally {
@@ -280,15 +296,23 @@ export function GamePage() {
 
   const myTheme = roleTheme[privateState.role];
   const RoleIcon = myTheme.icon;
-  const canActAtNight = game.phase === "NIGHT" && privateState.isAlive && privateState.role !== "VILLAGER";
+  const villagerTask = privateState.villagerTask;
+  const villagerTaskExpired = privateState.role === "VILLAGER" && Boolean(villagerTask) && villagerTaskSeconds === 0 &&
+    Date.now() >= (villagerTask?.expiresAt ?? Number.POSITIVE_INFINITY);
+  const canActAtNight = game.phase === "NIGHT" && privateState.isAlive &&
+    (privateState.role !== "VILLAGER" || Boolean(villagerTask));
   const canVote = game.phase === "DAY_VOTING" && privateState.isAlive;
-  const showActionPanel = canActAtNight || canVote;
   const actionAlreadySubmitted = canActAtNight
-    ? privateState.submittedNightAction
+    ? privateState.role === "VILLAGER"
+      ? Boolean(villagerTask?.completed) || villagerTaskExpired
+      : privateState.submittedNightAction
     : canVote && !room.settings.canChangeVote
       ? Boolean(privateState.currentVote)
       : false;
-  const phaseExpired = Boolean(game.phaseEndsAt) && seconds === 0;
+  const showActionPanel = (canActAtNight && !actionAlreadySubmitted) || canVote;
+  const phaseExpired = privateState.role === "VILLAGER" && canActAtNight
+    ? villagerTaskExpired
+    : Boolean(game.phaseEndsAt) && seconds === 0;
   const actionLocked = actionPending || actionAlreadySubmitted || phaseExpired || connectionState !== "connected";
   const actionCandidates = game.players;
   const vampireAllies = privateState.vampireAllies ?? [];
@@ -435,6 +459,15 @@ export function GamePage() {
             </button>
           </section>
 
+          {game.phase === "NIGHT" && canActAtNight && actionAlreadySubmitted && (
+            <section className="game-board-panel rounded-3xl border p-6 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-emerald-300/20 bg-emerald-500/10 text-emerald-200"><Check size={23} /></span>
+              <p className="eyebrow mt-4">GECE GÖREVİ TAMAMLANDI</p>
+              <h2 className="mt-2 text-xl font-semibold">Diğer oyuncular bekleniyor</h2>
+              <p className="mt-2 text-sm text-mist">Gece tamamlandığında herkes aynı anda yeni aşamaya geçecek.</p>
+            </section>
+          )}
+
           {showVoteResult ? (
             <VoteResultPanel
               players={game.players}
@@ -450,13 +483,20 @@ export function GamePage() {
                     {canVote ? <Vote size={20} /> : privateState.role === "DOCTOR" ? <Shield size={20} /> : <Target size={20} />}
                   </span>
                   <div>
-                    <p className="eyebrow">{canVote ? "KASABA OYLAMASI" : privateState.role === "DOCTOR" ? "GECE KORUMASI" : "VAMPİR SALDIRISI"}</p>
-                    <h2 className="mt-2 text-xl font-semibold">{canVote ? "Kasaba kimi eleyecek?" : privateState.role === "DOCTOR" ? "Bu gece kimi koruyacaksın?" : "Bu gece kimi öldüreceksin?"}</h2>
+                    <p className="eyebrow">{canVote ? "KASABA OYLAMASI" : "GECE GÖREVİ"}</p>
+                    <h2 className="mt-2 text-xl font-semibold">{canVote ? "Kasaba kimi eleyecek?" : "Bu gece kimi seçeceksin?"}</h2>
                     <p className="mt-1 text-sm text-mist">
                       {canVote
                         ? `${room.settings.voteVisibility === "PUBLIC" ? "Açık" : "Gizli"} oylama · ${game.votesCast} kişi oy kullandı`
                         : "Bir oyuncu seç ve süre dolmadan kararını onayla."}
                     </p>
+                    {canActAtNight && privateState.role === "VILLAGER" && villagerTask && (
+                      <div className="mt-4 rounded-2xl border border-gold/20 bg-gold/[.07] px-4 py-3 text-center">
+                        <p className="text-[9px] font-black uppercase tracking-[.24em] text-gold/70">İŞARETLEMEN GEREKEN KİŞİ</p>
+                        <p className="mt-1 font-display text-2xl font-bold text-bone sm:text-3xl">{villagerTask.targetNickname}</p>
+                        <p className="mt-1 text-xs font-bold tabular-nums text-gold">{villagerTaskSeconds} saniye</p>
+                      </div>
+                    )}
                     {canActAtNight && privateState.role === "VAMPIRE" && vampireAllies.length > 0 && vampireNightChoices.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {vampireNightChoices.map((choice) => (
@@ -491,12 +531,37 @@ export function GamePage() {
                         (!room.settings.doctorCanSelfProtect || privateState.doctorSelfProtectionUsed));
                     const voterIds = votersByTarget.get(player.id) ?? [];
                     const hasVoted = votedPlayerIds.has(player.id);
+                    const isCurrentVote = canVote && privateState.currentVote === player.id;
+                    const choosePlayer = () => {
+                      if (actionLocked || unavailable) return;
+                      if (canActAtNight && privateState.role === "VILLAGER") {
+                        if (player.id !== villagerTask?.targetId) {
+                          setSelected("");
+                          setActionError("Hedefin bu oyuncu değil.");
+                          return;
+                        }
+                        setSelected(player.id);
+                        setActionError("");
+                        void submitAction(player.id);
+                        return;
+                      }
+                      setActionError("");
+                      setSelected(player.id);
+                    };
                     return (
-                    <button
+                    <div
                       key={player.id}
-                      disabled={actionLocked || unavailable}
-                      onClick={() => setSelected(player.id)}
-                      className={`relative min-h-44 overflow-hidden rounded-2xl border p-5 text-left transition ${
+                      role="button"
+                      tabIndex={actionLocked || unavailable ? -1 : 0}
+                      aria-disabled={actionLocked || unavailable}
+                      onClick={choosePlayer}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          choosePlayer();
+                        }
+                      }}
+                      className={`relative min-h-44 overflow-hidden rounded-2xl border p-5 text-left transition ${actionLocked || unavailable ? "cursor-not-allowed opacity-55" : "cursor-pointer"} ${
                         !player.isAlive
                           ? "border-rose-300/25 bg-[linear-gradient(145deg,rgba(35,15,22,.88),rgba(9,12,18,.94))]"
                           : selected === player.id
@@ -539,9 +604,28 @@ export function GamePage() {
                       {canVote && room.settings.voteVisibility === "PUBLIC" && voterIds.length > 0 && (
                         <span className="absolute right-3 top-3 rounded-full bg-white/[.08] px-2 py-1 text-[10px] font-bold">{voterIds.length}</span>
                       )}
-                      {selected === player.id && <span className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-rose-500 text-white"><Check size={16} /></span>}
+                      {isCurrentVote && (
+                        <span className="absolute bottom-3 right-3 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-emerald-600 px-3 text-[10px] font-black text-white">
+                          <Check size={14} strokeWidth={3} /> OY VERİLDİ
+                        </span>
+                      )}
+                      {canVote && selected === player.id && !isCurrentVote && (
+                        <button
+                          type="button"
+                          className="absolute inset-x-3 bottom-3 z-20 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 text-xs font-black text-white shadow-[0_12px_30px_rgba(190,24,54,.35)] transition hover:bg-rose-500 disabled:opacity-60"
+                          disabled={actionLocked}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void submitAction(player.id);
+                          }}
+                        >
+                          {actionPending ? <LoaderCircle size={16} className="animate-spin" /> : <Vote size={16} />}
+                          {privateState.currentVote ? "OYUNU DEĞİŞTİR" : "OYU ONAYLA"}
+                        </button>
+                      )}
+                      {!canVote && selected === player.id && <span className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full bg-rose-500 text-white"><Check size={16} /></span>}
                       {!player.isAlive && <DeadMark />}
-                    </button>
+                    </div>
                     );
                   })}
                 </div>
@@ -566,15 +650,24 @@ export function GamePage() {
                     {selected === SKIP_VOTE_ID && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-white"><Check size={17} /></span>}
                   </button>
                 )}
-                {selected && (
+                {selected && (!canVote || selected === SKIP_VOTE_ID) && (
                   <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-500/[.05] px-3 py-2 text-xs text-rose-100">
                     <Check size={14} className="shrink-0 text-rose-300" />
                     <span><strong>{selected === SKIP_VOTE_ID ? "Geç" : playerNameById.get(selected)}</strong> seçildi. Aşağıdaki düğmeyle kararını onayla.</span>
                   </div>
                 )}
-                <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
+                {(!canVote || selected === SKIP_VOTE_ID) && <button className="btn-primary mt-5 w-full justify-center" disabled={!selected || actionLocked} onClick={() => void submitAction()}>
                   {actionAlreadySubmitted ? <><Check size={17} /> Kararın alındı</> : actionPending ? <><LoaderCircle size={17} className="animate-spin" /> Gönderiliyor</> : canVote ? <><Vote size={17} /> {selected === SKIP_VOTE_ID ? "Geç oyu ver" : privateState.currentVote ? "Oyumu güncelle" : "Oyumu gönder"}</> : <><Shield size={17} /> Kararımı gönder</>}
-                </button>
+                </button>}
+                {canVote && selected && selected !== SKIP_VOTE_ID && privateState.currentVote !== selected && (
+                  <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-[65] rounded-2xl border border-rose-300/20 bg-[#100d12]/95 p-3 shadow-2xl backdrop-blur-xl sm:hidden">
+                    <p className="mb-2 truncate text-center text-xs font-bold text-bone">{playerNameById.get(selected)} için oyunu onayla</p>
+                    <button className="btn-primary min-h-12 w-full justify-center" disabled={actionLocked} onClick={() => void submitAction(selected)}>
+                      {actionPending ? <LoaderCircle size={16} className="animate-spin" /> : <Vote size={16} />}
+                      {privateState.currentVote ? "OYUNU DEĞİŞTİR" : "OYU ONAYLA"}
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           ) : (
@@ -709,6 +802,10 @@ export function GamePage() {
           vampireAllies={vampireAllies}
           seconds={seconds}
         />
+      )}
+
+      {villagerTaskIntroVisible && game.phase === "NIGHT" && (
+        <NightTaskIntroOverlay targetNickname={privateState.role === "VILLAGER" ? villagerTask?.targetNickname : undefined} />
       )}
 
       {visibleElimination && (
@@ -853,6 +950,25 @@ function VictoryPlayerCard({
       </span>
       {winner && <Crown size={16} className="shrink-0 text-amber-300" />}
     </article>
+  );
+}
+
+function NightTaskIntroOverlay({ targetNickname }: { targetNickname?: string }) {
+  return (
+    <div className="fixed inset-0 z-[72] grid place-items-center bg-[#030508]/92 p-5 backdrop-blur-md" role="dialog" aria-live="assertive" aria-label="Gece görevi">
+      <div className="opening-sequence-card w-full max-w-2xl rounded-3xl border border-gold/20 bg-[#100d12]/95 p-8 text-center shadow-2xl sm:p-12">
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-gold/20 bg-gold/[.08] text-gold"><Target size={29} /></span>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[.32em] text-gold/70">
+          {targetNickname ? "BU GECE İŞARETLEMEN GEREKEN KİŞİ" : "BU GECE SEÇİM YAPMAN GEREKİYOR"}
+        </p>
+        <p className="mt-4 break-words font-display text-5xl font-black uppercase text-bone sm:text-7xl">
+          {targetNickname ?? "HEDEFİNİ SEÇ"}
+        </p>
+        <div className="mx-auto mt-7 h-1.5 w-40 overflow-hidden rounded-full bg-white/10">
+          <span className="block h-full w-full origin-left animate-[task-intro-progress_2s_linear_forwards] rounded-full bg-gold" />
+        </div>
+      </div>
+    </div>
   );
 }
 

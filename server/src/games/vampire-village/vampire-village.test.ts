@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { validateRoleDistribution } from "./validation.js";
 import { assignRoles, createRoleDeck } from "./roleAssignment.js";
 import { VampireVillageEngine } from "./VampireVillageEngine.js";
@@ -35,6 +35,16 @@ function startedEngine() {
   engine.start();
   engine.advancePhase();
   return engine;
+}
+
+function completeVillagerTasks(engine: VampireVillageEngine) {
+  players.forEach((player) => {
+    const internal = engine.getInternalPlayer(player.id);
+    const task = engine.getPrivateState(player.id).villagerTask;
+    if (internal?.isAlive && internal.role === "VILLAGER" && task && !task.completed) {
+      engine.handleAction(player.id, { type: "NIGHT_ACTION", targetId: task.targetId });
+    }
+  });
 }
 
 describe("rol doğrulama", () => {
@@ -126,6 +136,49 @@ describe("rol dağıtımı", () => {
 });
 
 describe("gece, oy ve sohbet kuralları", () => {
+  it("Köylüye özel sahte hedef verir ve yanlış hedefi reddeder", () => {
+    const engine = startedEngine();
+    const villager = players.find((player) => engine.getInternalPlayer(player.id)?.role === "VILLAGER")!;
+    const task = engine.getPrivateState(villager.id).villagerTask!;
+    const wrongTarget = players.find((player) => player.id !== villager.id && player.id !== task.targetId)!;
+
+    expect(task.targetNickname).toBeTruthy();
+    expect(task.expiresAt).toBeGreaterThan(Date.now());
+    expect(() => engine.handleAction(villager.id, { type: "NIGHT_ACTION", targetId: wrongTarget.id })).toThrow(
+      /Hedefin bu oyuncu değil/
+    );
+    engine.handleAction(villager.id, { type: "NIGHT_ACTION", targetId: task.targetId });
+    expect(engine.getPrivateState(villager.id).villagerTask?.completed).toBe(true);
+    const nonVillager = players.find((player) => engine.getInternalPlayer(player.id)?.role !== "VILLAGER")!;
+    expect(engine.getPrivateState(nonVillager.id).villagerTask).toBeNull();
+  });
+
+  it("Köylü görevi 10 saniye sonunda sonucu etkilemeden otomatik tamamlanır", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-03T12:00:00.000Z"));
+      const engine = startedEngine();
+      const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
+      const vampire = internal.find((player) => player.role === "VAMPIRE")!;
+      const doctor = internal.find((player) => player.role === "DOCTOR")!;
+      const target = internal.find((player) => player.role === "VILLAGER")!;
+
+      engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: target.id });
+      engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: target.id });
+      expect(engine.haveAllRequiredNightActions()).toBe(false);
+
+      vi.advanceTimersByTime(10_001);
+      expect(engine.haveAllRequiredNightActions()).toBe(true);
+      expect(engine.getPrivateState(target.id).villagerTask?.completed).toBe(true);
+
+      engine.advancePhase();
+      expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(true);
+      expect(engine.getPublicState().lastOutcome).toMatchObject({ type: "NIGHT_SAFE", round: 1 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("Doktor Vampir hedefini koruduğunda ölümü engeller", () => {
     const engine = startedEngine();
     const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
@@ -135,6 +188,7 @@ describe("gece, oy ve sohbet kuralları", () => {
     engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: target.id });
     expect(engine.haveAllRequiredNightActions()).toBe(false);
     engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: target.id });
+    completeVillagerTasks(engine);
     expect(engine.haveAllRequiredNightActions()).toBe(true);
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(true);
@@ -169,6 +223,7 @@ describe("gece, oy ve sohbet kuralları", () => {
     const target = internal.find((player) => player.role === "VILLAGER")!;
     engine.setConnected(doctor.id, false);
     engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: target.id });
+    completeVillagerTasks(engine);
     expect(engine.haveAllRequiredNightActions()).toBe(true);
   });
 

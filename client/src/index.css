@@ -695,6 +695,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   }
 }
 
+@keyframes task-intro-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
 .death-overlay {
   animation: death-fade 4s ease both;
 }

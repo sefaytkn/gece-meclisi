@@ -26,6 +26,7 @@ const phaseDurations = {
 
 export function setupSocket(io: Server, roomService = new RoomService()) {
   const timers = new Map<string, NodeJS.Timeout>();
+  const villagerTaskTimers = new Map<string, NodeJS.Timeout>();
   const disconnectTimers = new Set<NodeJS.Timeout>();
   const chatWindows = new Map<string, number[]>();
   const eventWindows = new Map<string, number[]>();
@@ -92,6 +93,9 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
     const activeTimer = timers.get(code);
     if (activeTimer) clearTimeout(activeTimer);
     timers.delete(code);
+    const villagerTaskTimer = villagerTaskTimers.get(code);
+    if (villagerTaskTimer) clearTimeout(villagerTaskTimer);
+    villagerTaskTimers.delete(code);
     if (resolvingPhases.has(code)) return;
     resolvingPhases.add(code);
     try {
@@ -154,6 +158,23 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
       code,
       setTimeout(() => completePhase(code), seconds * 1000)
     );
+    const previousVillagerTaskTimer = villagerTaskTimers.get(code);
+    if (previousVillagerTaskTimer) clearTimeout(previousVillagerTaskTimer);
+    villagerTaskTimers.delete(code);
+    if (phase === "NIGHT") {
+      const villagerTaskTimer = setTimeout(() => {
+        villagerTaskTimers.delete(code);
+        try {
+          const activeRoom = roomService.getInternalRoom(code);
+          if (activeRoom.engine?.getPhase() !== "NIGHT") return;
+          if (activeRoom.engine.haveAllRequiredNightActions()) completePhase(code);
+          else broadcastGame(code);
+        } catch {
+          // Oda görev süresi dolmadan kapanmış olabilir.
+        }
+      }, 10_050);
+      villagerTaskTimers.set(code, villagerTaskTimer);
+    }
   };
 
   const handle =
@@ -244,6 +265,9 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
           const timer = timers.get(roomCode);
           if (timer) clearTimeout(timer);
           timers.delete(roomCode);
+          const villagerTaskTimer = villagerTaskTimers.get(roomCode);
+          if (villagerTaskTimer) clearTimeout(villagerTaskTimer);
+          villagerTaskTimers.delete(roomCode);
         }
         return result;
       })();
@@ -412,6 +436,9 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
           const timer = timers.get(room.code);
           if (timer) clearTimeout(timer);
           timers.delete(room.code);
+          const villagerTaskTimer = villagerTaskTimers.get(room.code);
+          if (villagerTaskTimer) clearTimeout(villagerTaskTimer);
+          villagerTaskTimers.delete(room.code);
         }
       }, env.RECONNECT_GRACE_MS);
       disconnectTimers.add(disconnectTimer);
@@ -424,6 +451,8 @@ export function setupSocket(io: Server, roomService = new RoomService()) {
       closing = true;
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
+      villagerTaskTimers.forEach((timer) => clearTimeout(timer));
+      villagerTaskTimers.clear();
       disconnectTimers.forEach((timer) => clearTimeout(timer));
       disconnectTimers.clear();
       chatWindows.clear();
