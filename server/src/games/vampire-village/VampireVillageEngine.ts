@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { GameEngine } from "../core/GameEngine.js";
-import type { EnginePlayer, PublicGameState, Winner } from "../core/GameTypes.js";
+import type { EnginePlayer, PublicGameState, PublicRoundOutcome, Winner } from "../core/GameTypes.js";
 import { AppError } from "../../utils/AppError.js";
 import { assignRoles } from "./roleAssignment.js";
 import { validateRoleDistribution } from "./validation.js";
@@ -48,6 +48,7 @@ export class VampireVillageEngine implements GameEngine {
   private completedDayVotes = 0;
   private winner: Winner = null;
   private lastResult: string | null = null;
+  private lastOutcome: PublicRoundOutcome | null = null;
   private readonly players = new Map<string, InternalPlayer>();
   private readonly nightActions = new Map<string, string>();
   private readonly votes = new Map<string, string>();
@@ -133,6 +134,7 @@ export class VampireVillageEngine implements GameEngine {
       this.phase = "DAY_VOTING";
       this.votes.clear();
       this.lastVoteTally = [];
+      this.lastOutcome = null;
       this.lastResult = "Kasaba kararını vermek için oylamaya geçti.";
     } else if (this.phase === "DAY_VOTING") {
       const resolution = resolveVotes(this.votes);
@@ -153,10 +155,19 @@ export class VampireVillageEngine implements GameEngine {
         eliminated.eliminationRound = this.round;
         eliminated.deathCause = "VOTE";
         this.lastResult = `${eliminated.nickname} kasabanın kararıyla elendi.`;
+        this.lastOutcome = {
+          id: `${this.round}:VOTE:${eliminated.id}`,
+          type: "VOTE_ELIMINATION",
+          round: this.round,
+          playerId: eliminated.id,
+          nickname: eliminated.nickname
+        };
       } else if (resolution.tiedIds.length > 1) {
         this.lastResult = "Oylar eşit çıktı. Kimse elenmedi; kasaba bir sonraki geceye hazırlanıyor.";
+        this.lastOutcome = { id: `${this.round}:VOTE:SAFE`, type: "VOTE_SAFE", round: this.round };
       } else {
         this.lastResult = "Oylama sonucunda kimse elenmedi.";
+        this.lastOutcome = { id: `${this.round}:VOTE:SAFE`, type: "VOTE_SAFE", round: this.round };
       }
       this.completedDayVotes += 1;
       this.finishOr("ROUND_RESULT");
@@ -164,6 +175,7 @@ export class VampireVillageEngine implements GameEngine {
       this.round += 1;
       this.nightActions.clear();
       this.votes.clear();
+      this.lastOutcome = null;
       this.phase = "NIGHT";
       this.lastResult = `${this.round}. gece başladı.`;
     }
@@ -183,10 +195,19 @@ export class VampireVillageEngine implements GameEngine {
       eliminated.eliminationRound = this.round;
       eliminated.deathCause = "VAMPIRE";
       this.lastResult = `Gün doğduğunda ${eliminated.nickname} hayatta değildi.`;
+      this.lastOutcome = {
+        id: `${this.round}:NIGHT:${eliminated.id}`,
+        type: "NIGHT_ELIMINATION",
+        round: this.round,
+        playerId: eliminated.id,
+        nickname: eliminated.nickname
+      };
     } else if (resolution.attackedId) {
       this.lastResult = "Gece bir saldırı oldu, fakat kimse ölmedi.";
+      this.lastOutcome = { id: `${this.round}:NIGHT:SAFE`, type: "NIGHT_SAFE", round: this.round };
     } else {
       this.lastResult = "Gece sakince geçti. Kimse ölmedi.";
+      this.lastOutcome = { id: `${this.round}:NIGHT:SAFE`, type: "NIGHT_SAFE", round: this.round };
     }
     this.nightActions.clear();
   }
@@ -242,6 +263,7 @@ export class VampireVillageEngine implements GameEngine {
       round: this.round,
       winner: this.winner,
       lastResult: this.lastResult,
+      lastOutcome: this.lastOutcome,
       players: [...this.players.values()].map((player) => ({
         id: player.id,
         nickname: player.nickname,
@@ -270,6 +292,16 @@ export class VampireVillageEngine implements GameEngine {
       submittedNightAction: this.nightActions.has(player.id),
       currentVote: this.votes.get(player.id) ?? null,
       deathCause: player.deathCause,
+      vampireAllies:
+        player.role === "VAMPIRE"
+          ? [...this.players.values()]
+              .filter((candidate) => candidate.role === "VAMPIRE" && candidate.id !== player.id)
+              .map((candidate) => ({
+                playerId: candidate.id,
+                nickname: candidate.nickname,
+                isAlive: candidate.isAlive
+              }))
+          : [],
       revealedRoles:
         this.phase === "FINISHED" || (!player.isAlive && this.settings.deadCanSeeRoles)
           ? [...this.players.values()].map((candidate) => ({

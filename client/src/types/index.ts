@@ -72,12 +72,21 @@ export interface GameState {
   winner: "VILLAGE" | "VAMPIRES" | null;
   players: GamePlayer[];
   lastResult: string | null;
+  lastOutcome: RoundOutcome | null;
   phaseEndsAt: number | null;
   serverNow?: number;
   votesCast: number;
   votedPlayerIds?: string[];
   publicVotes: { voterId: string; targetId: string }[];
   lastVoteTally: { targetId: string; count: number; voterIds: string[] }[];
+}
+
+export interface RoundOutcome {
+  id: string;
+  type: "NIGHT_ELIMINATION" | "VOTE_ELIMINATION" | "NIGHT_SAFE" | "VOTE_SAFE";
+  round: number;
+  playerId?: string;
+  nickname?: string;
 }
 
 export interface PrivateState {
@@ -88,6 +97,7 @@ export interface PrivateState {
   submittedNightAction: boolean;
   currentVote: string | null;
   deathCause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | null;
+  vampireAllies: { playerId: string; nickname: string; isAlive: boolean }[];
   revealedRoles: { playerId: string; nickname: string; role: Role; isAlive: boolean }[];
 }
 

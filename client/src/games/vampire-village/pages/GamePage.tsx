@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, SkipForward, Skull, SlidersHorizontal, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Crown, Eye, EyeOff, HeartPulse, LoaderCircle, MessageCircle, Moon, Shield, ShieldCheck, SkipForward, Skull, SlidersHorizontal, Sparkles, Sun, Swords, Target, UsersRound, Volume2, VolumeX, Vote, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChatPanel } from "../../../components/ChatPanel";
@@ -9,7 +9,7 @@ import { useRoomSocket } from "../../../hooks/useRoomSocket";
 import { configureGameAudio, playGameSound, startNightWind, stopGameAmbience } from "../../../services/gameAudio";
 import { clearRoomSession } from "../../../services/roomSession";
 import { emitAck } from "../../../services/socket";
-import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role } from "../../../types";
+import type { ChatMessage, GamePlayer, GameState, PlayerElimination, Role, RoundOutcome } from "../../../types";
 import { shouldShowPersonalDeathEffect, vampireKillVariantFor, type VampireKillVariant } from "../deathPresentation";
 
 const phaseNames = {
@@ -46,6 +46,7 @@ export function GamePage() {
   const [roleVisible, setRoleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [visibleElimination, setVisibleElimination] = useState<PlayerElimination | null>(null);
+  const [visibleOutcome, setVisibleOutcome] = useState<RoundOutcome | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("gece:sound-enabled") !== "false");
   const [soundVolume, setSoundVolume] = useState(() => {
     const storedVolume = Number(localStorage.getItem("gece:sound-volume"));
@@ -166,6 +167,25 @@ export function GamePage() {
     return () => window.clearTimeout(timeout);
   }, [elimination?.id, session?.playerId]);
 
+  useEffect(() => {
+    const outcome = game?.lastOutcome;
+    if (!outcome) {
+      setVisibleOutcome(null);
+      return;
+    }
+    const personalDeathIsPlaying = outcome.playerId === session?.playerId;
+    const delay = personalDeathIsPlaying ? 4100 : 0;
+    let hideTimeout: number | undefined;
+    const showTimeout = window.setTimeout(() => {
+      setVisibleOutcome(outcome);
+      hideTimeout = window.setTimeout(() => setVisibleOutcome(null), 3800);
+    }, delay);
+    return () => {
+      window.clearTimeout(showTimeout);
+      if (hideTimeout) window.clearTimeout(hideTimeout);
+    };
+  }, [game?.lastOutcome?.id, session?.playerId]);
+
   const toggleSound = () => {
     setSoundEnabled((enabled) => {
       const next = !enabled;
@@ -229,7 +249,12 @@ export function GamePage() {
   const phaseExpired = Boolean(game.phaseEndsAt) && seconds === 0;
   const actionLocked = actionPending || actionAlreadySubmitted || phaseExpired || connectionState !== "connected";
   const actionCandidates = game.players;
+  const vampireAllies = privateState.vampireAllies ?? [];
   const revealedRoleByPlayer = new Map(privateState.revealedRoles.map((item) => [item.playerId, item.role]));
+  const vampireAllyIds = new Set(vampireAllies.map((ally) => ally.playerId));
+  if (privateState.role === "VAMPIRE" && roleVisible) {
+    vampireAllies.forEach((ally) => revealedRoleByPlayer.set(ally.playerId, "VAMPIRE"));
+  }
   const playerNameById = new Map(game.players.map((player) => [player.id, player.nickname]));
   const votersByTarget = new Map<string, string[]>();
   game.publicVotes.forEach(({ voterId, targetId }) => {
@@ -399,7 +424,7 @@ export function GamePage() {
                     const unavailable =
                       !player.isAlive ||
                       (canVote && !room.settings.canSelfVote && player.id === session?.playerId) ||
-                      (canActAtNight && privateState.role === "VAMPIRE" && player.id === session?.playerId) ||
+                      (canActAtNight && privateState.role === "VAMPIRE" && (player.id === session?.playerId || vampireAllyIds.has(player.id))) ||
                       (canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId);
                     const voterIds = votersByTarget.get(player.id) ?? [];
                     const hasVoted = votedPlayerIds.has(player.id);
@@ -425,6 +450,9 @@ export function GamePage() {
                           <span className="mt-1 flex flex-wrap items-center gap-1.5">
                             {player.id === session?.playerId && <span className="text-[9px] font-black uppercase tracking-wider text-rose-300">Sen</span>}
                             {player.id === room.ownerPlayerId && <Crown size={12} className="text-amber-300" />}
+                            {privateState.role === "VAMPIRE" && roleVisible && vampireAllyIds.has(player.id) && (
+                              <span className="rounded-full border border-rose-300/20 bg-rose-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-rose-200">Vampir takımın</span>
+                            )}
                             {canVote && hasVoted && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-emerald-500/15 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-200">
                                 <Check size={12} strokeWidth={3} /> Oy verdi
@@ -596,12 +624,17 @@ export function GamePage() {
         <OpeningSequenceOverlay
           role={privateState.role}
           roleInfo={privateState.roleInfo}
+          vampireAllies={vampireAllies}
           seconds={seconds}
         />
       )}
 
       {visibleElimination && (
         <DeathEffect elimination={visibleElimination} />
+      )}
+
+      {visibleOutcome && (
+        <RoundOutcomeOverlay outcome={visibleOutcome} />
       )}
 
       {game.phase === "FINISHED" && (
@@ -737,10 +770,12 @@ function VictoryPlayerCard({
 function OpeningSequenceOverlay({
   role,
   roleInfo,
+  vampireAllies,
   seconds
 }: {
   role: Role;
   roleInfo: { name: string; description: string; ability: string; goal: string };
+  vampireAllies: { playerId: string; nickname: string; isAlive: boolean }[];
   seconds: number;
 }) {
   const [introStarted, setIntroStarted] = useState(false);
@@ -775,6 +810,18 @@ function OpeningSequenceOverlay({
           </span>
           <h2 className="mt-6 font-display text-5xl font-semibold text-white sm:text-7xl">{roleInfo.name}</h2>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-6 opacity-80">{roleInfo.description}</p>
+          {role === "VAMPIRE" && vampireAllies.length > 0 && (
+            <div className="mx-auto mt-5 max-w-xl rounded-2xl border border-rose-300/20 bg-rose-950/35 p-4 text-left">
+              <p className="text-[9px] font-black uppercase tracking-[.22em] text-rose-300">VAMPİR TAKIMIN</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {vampireAllies.map((ally) => (
+                  <span key={ally.playerId} className="inline-flex items-center gap-2 rounded-full border border-rose-300/15 bg-black/25 px-3 py-2 text-xs font-bold text-rose-100">
+                    <Skull size={13} /> {ally.nickname}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mx-auto mt-6 grid max-w-xl gap-3 text-left sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[9px] font-black uppercase tracking-widest opacity-60">YETENEĞİN</p>
@@ -788,6 +835,45 @@ function OpeningSequenceOverlay({
           <p className="mt-6 text-xs opacity-60">Rolünü aklında tut. İlk gece birazdan başlayacak.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function RoundOutcomeOverlay({ outcome }: { outcome: RoundOutcome }) {
+  const eliminated = outcome.type === "NIGHT_ELIMINATION" || outcome.type === "VOTE_ELIMINATION";
+  const nightOutcome = outcome.type === "NIGHT_ELIMINATION" || outcome.type === "NIGHT_SAFE";
+  const title = outcome.type === "NIGHT_ELIMINATION"
+    ? `${outcome.nickname ?? "Bir köylü"} dün gece köyde pusuya uğradı.`
+    : outcome.type === "VOTE_ELIMINATION"
+      ? `${outcome.nickname ?? "Bir oyuncu"} köyde istenmiyordu.`
+      : "Herkes güvende — şimdilik.";
+  const description = outcome.type === "VOTE_ELIMINATION"
+    ? "Kasabanın kararı uygulandı ve bir oyuncu asıldı."
+    : outcome.type === "NIGHT_ELIMINATION"
+      ? "Gün doğduğunda kasaba bir kişiyi eksik buldu."
+      : nightOutcome
+        ? "Gece sona erdi; bu kez kimse hayatını kaybetmedi."
+        : "Geç oyları veya eşitlik nedeniyle bu tur kimse asılmadı.";
+
+  return (
+    <div
+      className={`round-outcome-overlay fixed inset-0 z-[90] grid place-items-center overflow-hidden p-6 ${eliminated ? "round-outcome-danger" : "round-outcome-safe"}`}
+      role="status"
+      aria-live="assertive"
+    >
+      {eliminated && <><div className="blood-cloud blood-cloud-one" /><div className="blood-cloud blood-cloud-two" /></>}
+      <div className="round-outcome-card relative z-10 w-full max-w-4xl text-center">
+        <span className={`mx-auto grid h-24 w-24 place-items-center rounded-full border backdrop-blur-md ${eliminated ? "border-rose-200/25 bg-[#310a17]/85 text-rose-100 shadow-[0_0_80px_rgba(190,18,60,.58)]" : "border-emerald-200/25 bg-[#071f19]/85 text-emerald-100 shadow-[0_0_80px_rgba(16,185,129,.28)]"}`}>
+          {eliminated ? <Skull size={48} /> : <ShieldCheck size={48} />}
+        </span>
+        <p className={`mt-7 text-[10px] font-black uppercase tracking-[.42em] sm:text-xs ${eliminated ? "text-rose-300" : "text-emerald-200"}`}>
+          {nightOutcome ? "GÜN DOĞDU" : "KASABANIN KARARI"}
+        </p>
+        <h2 className="mx-auto mt-4 max-w-4xl font-display text-4xl font-semibold leading-tight text-white drop-shadow-2xl sm:text-6xl lg:text-7xl">
+          {title}
+        </h2>
+        <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-slate-200/75 sm:text-base">{description}</p>
+      </div>
     </div>
   );
 }

@@ -87,9 +87,23 @@ describe("rol dağıtımı", () => {
     const engine = startedEngine();
     const publicState = engine.getPublicState();
     expect(publicState.players.every((player) => !("role" in player))).toBe(true);
-    const privateState = engine.getPrivateState(players[0]!.id) as Record<string, unknown>;
+    const nonVampire = players.find((player) => engine.getInternalPlayer(player.id)?.role !== "VAMPIRE")!;
+    const privateState = engine.getPrivateState(nonVampire.id) as Record<string, unknown>;
     expect(privateState.role).toBeTruthy();
-    expect(JSON.stringify(privateState)).not.toContain(players[1]!.id);
+    expect(privateState.vampireAllies).toEqual([]);
+  });
+
+  it("birden fazla Vampir birbirini ilk geceden itibaren tanır", () => {
+    const engine = new VampireVillageEngine(
+      players,
+      settings({ mode: "FREE", roles: { vampires: 2, villagers: 2, doctors: 1 } })
+    );
+    engine.start();
+    const vampires = players.filter((player) => engine.getInternalPlayer(player.id)?.role === "VAMPIRE");
+    expect(vampires).toHaveLength(2);
+    expect(engine.getPrivateState(vampires[0]!.id).vampireAllies).toEqual([
+      expect.objectContaining({ playerId: vampires[1]!.id, nickname: vampires[1]!.nickname, isAlive: true })
+    ]);
   });
 });
 
@@ -104,6 +118,7 @@ describe("gece, oy ve sohbet kuralları", () => {
     engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: target.id });
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(true);
+    expect(engine.getPublicState().lastOutcome).toMatchObject({ type: "NIGHT_SAFE", round: 1 });
   });
 
   it("Doktor korumadığında Vampir hedefini eler", () => {
@@ -117,6 +132,11 @@ describe("gece, oy ve sohbet kuralları", () => {
     engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: other.id });
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(false);
+    expect(engine.getPublicState().lastOutcome).toMatchObject({
+      type: "NIGHT_ELIMINATION",
+      playerId: target.id,
+      nickname: target.nickname
+    });
     expect(engine.getPrivateState(target.id)).toMatchObject({ deathCause: "VAMPIRE" });
     expect(engine.getPrivateState(target.id).revealedRoles).toHaveLength(players.length);
   });
@@ -171,6 +191,11 @@ describe("gece, oy ve sohbet kuralları", () => {
     }
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(false);
+    expect(engine.getPublicState().lastOutcome).toMatchObject({
+      type: "VOTE_ELIMINATION",
+      playerId: target.id,
+      nickname: target.nickname
+    });
     expect(engine.getPrivateState(target.id)).toMatchObject({ deathCause: "VOTE" });
   });
 
@@ -225,6 +250,7 @@ describe("gece, oy ve sohbet kuralları", () => {
     }
     engine.advancePhase();
     expect(players.every((player) => engine.getInternalPlayer(player.id)?.isAlive)).toBe(true);
+    expect(engine.getPublicState().lastOutcome).toMatchObject({ type: "VOTE_SAFE" });
     expect(engine.getPublicState().lastVoteTally).toEqual([
       { targetId: SKIP_VOTE_ID, count: players.length, voterIds: [] }
     ]);
