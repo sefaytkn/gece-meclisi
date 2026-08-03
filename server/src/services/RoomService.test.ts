@@ -117,6 +117,19 @@ describe("RoomService yetkilendirme ve yeniden bağlanma", () => {
     expect(recovered.room.players).toHaveLength(2);
   });
 
+  it("bekleme odasına geri dönen oyuncunun hazır durumunu sıfırlar", async () => {
+    const { service, owner, joins } = await fullRoom();
+    const returning = joins[0]!;
+    service.setReady(owner.room.code, returning.playerId, true);
+
+    const reconnected = await service.joinRoom(
+      { code: owner.room.code, reconnectToken: returning.reconnectToken },
+      { ...identity(2), socketId: "socket-ready-reset" }
+    );
+
+    expect(reconnected.room.players.find((player) => player.id === returning.playerId)?.isReady).toBe(false);
+  });
+
   it("odadan ayrılan tarayıcının aynı odaya temiz bir oyuncu olarak yeniden girmesine izin verir", async () => {
     const service = new RoomService();
     const owner = await service.createRoom({ name: "Geri Dönüş", maxPlayers: 8 }, identity(1));

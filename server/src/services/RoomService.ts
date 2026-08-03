@@ -147,6 +147,7 @@ export class RoomService {
       if (!sameIdentity) throw new AppError("INVALID_RECONNECT_TOKEN", "Yeniden bağlanma anahtarı bu oyuncuya ait değil.");
       reconnecting.socketId = identity.socketId;
       reconnecting.isConnected = true;
+      if (room.status === "WAITING") reconnecting.isReady = false;
       room.engine?.reconnectPlayer(reconnecting.id);
       return {
         room: this.publicRoom(room),

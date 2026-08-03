@@ -95,9 +95,11 @@ export interface PrivateState {
   roleInfo: { name: string; description: string; ability: string; goal: string };
   isAlive: boolean;
   submittedNightAction: boolean;
+  doctorSelfProtectionUsed: boolean;
   currentVote: string | null;
   deathCause: "VAMPIRE" | "VOTE" | "DISCONNECTED" | null;
   vampireAllies: { playerId: string; nickname: string; isAlive: boolean }[];
+  vampireNightChoices: { playerId: string; nickname: string; targetId: string }[];
   revealedRoles: { playerId: string; nickname: string; role: Role; isAlive: boolean }[];
 }
 

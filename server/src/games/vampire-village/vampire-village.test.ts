@@ -105,6 +105,24 @@ describe("rol dağıtımı", () => {
       expect.objectContaining({ playerId: vampires[1]!.id, nickname: vampires[1]!.nickname, isAlive: true })
     ]);
   });
+
+  it("Vampirlerin gece seçimlerini yalnızca diğer Vampirlere gösterir", () => {
+    const engine = new VampireVillageEngine(
+      players,
+      settings({ mode: "FREE", roles: { vampires: 2, villagers: 2, doctors: 1 } })
+    );
+    engine.start();
+    engine.advancePhase();
+    const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
+    const vampires = internal.filter((player) => player.role === "VAMPIRE");
+    const target = internal.find((player) => player.role === "VILLAGER")!;
+    engine.handleAction(vampires[0]!.id, { type: "NIGHT_ACTION", targetId: target.id });
+
+    expect(engine.getPrivateState(vampires[1]!.id).vampireNightChoices).toEqual([
+      { playerId: vampires[0]!.id, nickname: vampires[0]!.nickname, targetId: target.id }
+    ]);
+    expect(engine.getPrivateState(target.id).vampireNightChoices).toEqual([]);
+  });
 });
 
 describe("gece, oy ve sohbet kuralları", () => {
@@ -121,6 +139,26 @@ describe("gece, oy ve sohbet kuralları", () => {
     engine.advancePhase();
     expect(engine.getInternalPlayer(target.id)?.isAlive).toBe(true);
     expect(engine.getPublicState().lastOutcome).toMatchObject({ type: "NIGHT_SAFE", round: 1 });
+  });
+
+  it("Doktorun kendisini oyun boyunca yalnızca bir kez korumasına izin verir", () => {
+    const engine = startedEngine();
+    const internal = players.map((player) => engine.getInternalPlayer(player.id)!);
+    const vampire = internal.find((player) => player.role === "VAMPIRE")!;
+    const doctor = internal.find((player) => player.role === "DOCTOR")!;
+
+    engine.handleAction(vampire.id, { type: "NIGHT_ACTION", targetId: doctor.id });
+    engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: doctor.id });
+    expect(engine.getPrivateState(doctor.id).doctorSelfProtectionUsed).toBe(true);
+    engine.advancePhase();
+    engine.advancePhase();
+    players.forEach((player) => engine.handleAction(player.id, { type: "VOTE", targetId: SKIP_VOTE_ID }));
+    engine.advancePhase();
+    engine.advancePhase();
+
+    expect(() => engine.handleAction(doctor.id, { type: "NIGHT_ACTION", targetId: doctor.id })).toThrow(
+      /yalnızca bir kez/
+    );
   });
 
   it("bağlantısı kopan gece rolünü beklemeden kalan kararlar tamamlanınca geceyi bitirir", () => {
@@ -327,7 +365,8 @@ describe("kazanan kontrolü", () => {
     connected: true,
     eliminationRound: null,
     deathCause: null,
-    previousProtectionTarget: null
+    previousProtectionTarget: null,
+    selfProtectionUsed: false
   });
 
   it("ayni gece eylemini ikinci kez reddeder", () => {

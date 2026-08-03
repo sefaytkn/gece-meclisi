@@ -75,7 +75,8 @@ export class VampireVillageEngine implements GameEngine {
         connected: true,
         eliminationRound: null,
         deathCause: null,
-        previousProtectionTarget: null
+        previousProtectionTarget: null,
+        selfProtectionUsed: false
       });
     });
     this.phase = "ROLE_REVEAL";
@@ -104,11 +105,15 @@ export class VampireVillageEngine implements GameEngine {
       if (!this.settings.doctorCanSelfProtect && player.id === target.id) {
         throw new AppError("SELF_PROTECT_DISABLED", "Bu odada Doktor kendisini koruyamaz.");
       }
+      if (player.id === target.id && player.selfProtectionUsed) {
+        throw new AppError("SELF_PROTECTION_ALREADY_USED", "Doktor kendisini oyun boyunca yalnızca bir kez koruyabilir.");
+      }
       if (!this.settings.doctorCanRepeatTarget && player.previousProtectionTarget === target.id) {
         throw new AppError("REPEAT_PROTECTION_DISABLED", "Doktor aynı oyuncuyu art arda koruyamaz.");
       }
     }
     this.nightActions.set(player.id, target.id);
+    if (player.role === "DOCTOR" && player.id === target.id) player.selfProtectionUsed = true;
   }
 
   private handleVote(player: InternalPlayer, targetId: string) {
@@ -298,6 +303,7 @@ export class VampireVillageEngine implements GameEngine {
       roleInfo: roleCopy[player.role],
       isAlive: player.isAlive,
       submittedNightAction: this.nightActions.has(player.id),
+      doctorSelfProtectionUsed: player.role === "DOCTOR" ? player.selfProtectionUsed : false,
       currentVote: this.votes.get(player.id) ?? null,
       deathCause: player.deathCause,
       vampireAllies:
@@ -309,6 +315,17 @@ export class VampireVillageEngine implements GameEngine {
                 nickname: candidate.nickname,
                 isAlive: candidate.isAlive
               }))
+          : [],
+      vampireNightChoices:
+        player.role === "VAMPIRE" && this.phase === "NIGHT"
+          ? [...this.players.values()]
+              .filter((candidate) => candidate.role === "VAMPIRE" && candidate.isAlive)
+              .flatMap((candidate) => {
+                const targetId = this.nightActions.get(candidate.id);
+                return targetId
+                  ? [{ playerId: candidate.id, nickname: candidate.nickname, targetId }]
+                  : [];
+              })
           : [],
       revealedRoles:
         this.phase === "FINISHED" || (!player.isAlive && this.settings.deadCanSeeRoles)

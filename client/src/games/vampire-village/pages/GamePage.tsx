@@ -267,6 +267,7 @@ export function GamePage() {
   const actionLocked = actionPending || actionAlreadySubmitted || phaseExpired || connectionState !== "connected";
   const actionCandidates = game.players;
   const vampireAllies = privateState.vampireAllies ?? [];
+  const vampireNightChoices = privateState.vampireNightChoices ?? [];
   const revealedRoleByPlayer = new Map(privateState.revealedRoles.map((item) => [item.playerId, item.role]));
   const vampireAllyIds = new Set(vampireAllies.map((ally) => ally.playerId));
   if (privateState.role === "VAMPIRE" && roleVisible) {
@@ -431,6 +432,25 @@ export function GamePage() {
                         ? `${room.settings.voteVisibility === "PUBLIC" ? "Açık" : "Gizli"} oylama · ${game.votesCast} kişi oy kullandı`
                         : "Bir oyuncu seç ve süre dolmadan kararını onayla."}
                     </p>
+                    {canActAtNight && privateState.role === "VAMPIRE" && vampireAllies.length > 0 && vampireNightChoices.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {vampireNightChoices.map((choice) => (
+                          <span key={choice.playerId} className="inline-flex items-center gap-1.5 rounded-full border border-rose-300/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-100">
+                            <Target size={12} />
+                            <strong>{choice.playerId === session?.playerId ? "Sen" : choice.nickname}</strong>
+                            <span className="text-rose-200/70">→</span>
+                            <strong>{playerNameById.get(choice.targetId) ?? "Oyuncu"}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {canActAtNight && privateState.role === "DOCTOR" && room.settings.doctorCanSelfProtect && (
+                      <p className="mt-2 text-xs text-emerald-100/65">
+                        {privateState.doctorSelfProtectionUsed
+                          ? "Kendini koruma hakkını kullandın; kalan gecelerde başka bir oyuncuyu seçmelisin."
+                          : "Kendini oyun boyunca yalnızca bir kez koruyabilirsin."}
+                      </p>
+                    )}
                     {canVote && <p className="mt-2 text-xs text-amber-100/60">Hayatta olan herkes oy verdiğinde oylama otomatik tamamlanır.</p>}
                   </div>
                 </div>
@@ -442,7 +462,8 @@ export function GamePage() {
                       !player.isAlive ||
                       (canVote && !room.settings.canSelfVote && player.id === session?.playerId) ||
                       (canActAtNight && privateState.role === "VAMPIRE" && (player.id === session?.playerId || vampireAllyIds.has(player.id))) ||
-                      (canActAtNight && privateState.role === "DOCTOR" && !room.settings.doctorCanSelfProtect && player.id === session?.playerId);
+                      (canActAtNight && privateState.role === "DOCTOR" && player.id === session?.playerId &&
+                        (!room.settings.doctorCanSelfProtect || privateState.doctorSelfProtectionUsed));
                     const voterIds = votersByTarget.get(player.id) ?? [];
                     const hasVoted = votedPlayerIds.has(player.id);
                     return (

@@ -51,6 +51,7 @@ export interface InternalPlayer {
   eliminationRound: number | null;
   deathCause: DeathCause | null;
   previousProtectionTarget: string | null;
+  selfProtectionUsed: boolean;
 }
 
 export interface NightAction {
